@@ -59,7 +59,7 @@ return (
         </div>
 
         <button className="btn-login" onClick={onLogin}>
-          <span>🔐</span> Anmelden
+          <span></span> Login
         </button>
 
         <div className="login-links">
