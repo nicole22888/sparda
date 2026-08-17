@@ -14,23 +14,24 @@ import Profil from './components/Profil';
 import './components/Login.css';
 
 function App() {
-const [isLoggedIn, setIsLoggedIn] = useState(false);
-const [currentPage, setCurrentPage] = useState('kontoübersicht');
+const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('isLoggedIn') === 'true');
+const [currentPage, setCurrentPage] = useState(() => localStorage.getItem('currentPage') || 'kontoübersicht');
 const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-
 const handleLogin = () => {
-setIsLoggedIn(true);
-setCurrentPage('kontoübersicht');
-};
-
+  setIsLoggedIn(true);
+  localStorage.setItem('isLoggedIn', 'true');
+  setCurrentPage('kontoübersicht');
+  localStorage.setItem('currentPage', 'kontoübersicht');
+  };
 const handleLogout = () => {
-setIsLoggedIn(false);
-setCurrentPage('kontoübersicht');
-};
-
+  setIsLoggedIn(false);
+  localStorage.removeItem('isLoggedIn');
+  localStorage.removeItem('currentPage');
+  };
 const goTo = (page) => {
   setCurrentPage(page);
+  localStorage.setItem('currentPage', page);
   setIsMobileMenuOpen(false);
   };
 
