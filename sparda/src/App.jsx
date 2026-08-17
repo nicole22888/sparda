@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+  
+  /*
+  import React, { useState } from 'react';
 
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -34,7 +36,9 @@ setCurrentPage(page);
 const renderPage = () => {
 switch (currentPage) {
 case 'kontoübersicht':
-return <Dashboard goTo={goTo} />;
+  return <div style={{ padding: '40px', fontSize: '30px' }}>
+  DASHBOARD TEST
+  </div>;
 
 case 'umsätze':
 return <Umsaetze goTo={goTo} />;
@@ -333,3 +337,4 @@ Profil & Sicherheit
 }
 
 export default App;
+*/
