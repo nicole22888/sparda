@@ -14,7 +14,7 @@ alert(
 );
 }, 100);
 }
-  
+};
 return (
 <>
 <section className="page active" id="page-überweisung">
@@ -303,6 +303,5 @@ Abbrechen
 
 </>
 );
-}
 }
 export default Ueberweisung;
