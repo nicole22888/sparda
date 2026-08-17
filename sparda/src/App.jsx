@@ -1,122 +1,73 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState } from 'react';
+import Navigation from './components/Navigation';
+import Header from './components/Header';
+import AccountOverview from './components/AccountOverview';
+import PageUmsaetze from './components/PageUmsaetze';
+import PageUeberweisung from './components/PageUeberweisung';
+import PageDauerauftrag from './components/PageDauerauftrag';
+import PageDepot from './components/PageDepot';
+import PageKarten from './components/PageKarten';
+import PagePostfach from './components/PagePostfach';
+import PageEinstellungen from './components/PageEinstellungen';
+import SecureGoModal from './components/SecureGoModal';
+import PageKonto from './components/PageKonto';
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [activeTab, setActiveTab] = useState('uebersicht');
+  const [secureGoData, setSecureGoData] = useState(null);
+
+  const handleTriggerSecureGo = (data) => {
+    setSecureGoData(data);
+  };
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'uebersicht':
+        return <AccountOverview onNavigate={(tab) => setActiveTab(tab)} />;
+      case 'umsaetze':
+        return <PageUmsaetze />;
+      case 'ueberweisung':
+        return <PageUeberweisung onTriggerSecureGo={handleTriggerSecureGo} />;
+      case 'dauerauftrag':
+        return <PageDauerauftrag />;
+      case 'depot':
+        return <PageDepot />;
+      case 'karten':
+        return <PageKarten />;
+      case 'postfach':
+        return <PagePostfach />;
+      case 'einstellungen':
+        return <PageEinstellungen />;
+      default:
+        return <AccountOverview onNavigate={(tab) => setActiveTab(tab)} />;
+    }
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      {/* Sidebar Navigation */}
+      <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <div className="ticks"></div>
+      {/* Main Content Area */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <Header activeTab={activeTab} />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        <main style={{ flex: 1, padding: '2rem', maxWidth: '1200px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+          {renderContent()}
+        </main>
+      </div>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      {/* SpardaSecureGo+ Overlay Modal */}
+      {secureGoData && (
+        <SecureGoModal
+          transactionData={secureGoData}
+          onClose={() => setSecureGoData(null)}
+          onSuccess={() => {
+            alert('Transaktion erfolgreich freigegeben und übermittelt!');
+            setActiveTab('umsaetze');
+          }}
+        />
+      )}
+    </div>
+  );
 }
-
-export default App
