@@ -16,6 +16,8 @@ import './components/Login.css';
 function App() {
 const [isLoggedIn, setIsLoggedIn] = useState(false);
 const [currentPage, setCurrentPage] = useState('kontoübersicht');
+const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
 
 const handleLogin = () => {
 setIsLoggedIn(true);
@@ -28,8 +30,9 @@ setCurrentPage('kontoübersicht');
 };
 
 const goTo = (page) => {
-setCurrentPage(page);
-};
+  setCurrentPage(page);
+  setIsMobileMenuOpen(false);
+  };
 
 const renderPage = () => {
 switch (currentPage) {
@@ -72,11 +75,14 @@ return (
 }
 return (
   <div id="app">
-
   <header className="app-header">
-
-<div className="app-header-logo">
-<div className="logo-icon">
+  <div className="app-header-logo">
+  <button className="mobile-menu-btn" 
+  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+  >
+  ☰
+  </button>
+  <div className="logo-icon">
 <svg viewBox="0 0 100 100">
 <text
 y=".9em"
@@ -151,7 +157,7 @@ color: 'var(--red)'
 </div>
 </header>
 
-<nav className="app-sidebar">
+<nav className={`app-sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
 <div className="sidebar-section">
 <div className="sidebar-section-title">
 Konten
