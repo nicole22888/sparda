@@ -178,26 +178,36 @@
     background: var(--white); border-bottom: 1px solid var(--gray-200);
     display: flex; align-items: center; z-index: 100;
     box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    width: 100%;
   }
-  .app-header-logo {
-    width: var(--sidebar-w); padding: 0 20px;
-    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
-    border-right: 1px solid var(--gray-200); height: 100%;
+.app-header-logo {
+  padding: 0 12px;
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  border-right: 1px solid var(--gray-200); height: 100%;
   }
   .app-header-logo .logo-icon {
-    width: 34px; height: 34px; background: var(--blue); border-radius: 4px;
-    display: flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; background: var(--blue); border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
   }
   .app-header-logo .logo-icon svg { fill: white; width: 22px; height: 22px; }
-  .app-header-logo .logo-label { font-size: 15px; font-weight: 700; color: var(--gray-900); }
+  .app-header-logo .logo-label { font-size: 15px; font-weight: 700; color: var(--gray-900); white-space: nowrap; }
   .app-header-logo .logo-label span { color: var(--blue); }
 
   .app-header-main {
-    flex: 1; padding: 0 24px;
-    display: flex; align-items: center; justify-content: space-between;
-  }
+    flex: 1; padding: 0 12px;
+    display: flex; align-items: center; justify-content: flex-end;
+    gap: 8px;
+    min-width: 0;
+   }
 
-  .header-greeting { font-size: 14px; color: var(--gray-600); }
+.header-greeting { 
+  font-size: 13px; 
+  color: var(--gray-600); 
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+  max-width: 180px; 
+  }
   .header-greeting strong { color: var(--gray-900); }
 
   .header-actions { display: flex; align-items: center; gap: 8px; }
@@ -664,7 +674,10 @@ box-shadow: 4px 0 20px rgba(0,0,0,0.1);
     .postfach-layout { grid-template-columns: 1fr; }
     .profil-grid { grid-template-columns: 1fr; }
     }
-
+   
+    @media (min-width: 901px) {
+      .header-greeting { max-width: none; }
+      }
     @media (max-width: 600px) {
     .account-cards { grid-template-columns: 1fr; }
     .stats-row { grid-template-columns: 1fr; }
@@ -672,3 +685,7 @@ box-shadow: 4px 0 20px rgba(0,0,0,0.1);
     .page { padding: 16px; } 
     .login-hero-inner { grid-template-columns: 1fr; gap: 40px; }
     }
+@media (max-width: 480px) {
+  .app-header-logo .logo-label { display: none; } /* Hides text on very tiny screens, keeping the icon visible */
+  .app-header-logo { border-right: none; }
+  }
