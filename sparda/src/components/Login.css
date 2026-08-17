@@ -74,7 +74,7 @@
   .login-nav-links a:hover { color: var(--red); }
 
   .login-hero {
-    background: linear-gradient(135deg, #1a1a2e 0%, #2d1b1b 50%, #3d0f0f 100%);
+    background: linear-gradient(135deg, #C8102E 0%, #a00d24 50%, #7a0b1e 100%);
     flex: 1; display: flex; align-items: center; justify-content: center;
     padding: 60px 40px; position: relative; overflow: hidden;
     min-height: calc(100vh - 94px);
@@ -267,7 +267,7 @@
     min-height: calc(100vh - 30px);
   }
 
-  .page { display: none; padding: 28px 32px; }
+  .page {   display: block; padding: 28px 32px; }
   .page.active { display: block; }
 
   .page-header { margin-bottom: 24px; }
