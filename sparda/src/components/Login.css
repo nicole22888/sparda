@@ -179,13 +179,13 @@ display: flex; align-items: center; z-index: 100;
 box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 width: 100%;
 overflow: hidden;
-padding-right: 8px;
+padding-right: 14px;
 }
 .app-header-logo {
 padding: 0 12px;
 display: flex; 
 align-items: center; 
-gap: 2px; 
+gap: 6px; 
 flex-shrink: 0;
 height: 100%;
 }
@@ -198,9 +198,9 @@ display: flex; align-items: center; justify-content: center;
 .app-header-logo .logo-label span { color: var(--blue); }
 
 .app-header-main {
-  flex: 1; padding: 0 4px 0 16px;
+  flex: 1; padding: 0 8px;
   display: flex; align-items: center; justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
   flex-wrap: nowrap;
   }
@@ -215,7 +215,7 @@ display: flex; align-items: center; justify-content: center;
   }
   .header-greeting strong { color: var(--gray-900); }
 
-  .header-actions { display: flex; align-items: center; gap: 8px; }
+  .header-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
   .header-btn {
     display: flex; align-items: center; gap: 6px; padding: 6px 12px;
     border: 1px solid var(--gray-300); border-radius: 6px; background: var(--white);
@@ -693,4 +693,13 @@ box-shadow: 4px 0 20px rgba(0,0,0,0.1);
 @media (max-width: 480px) {
   .app-header-logo .logo-label { display: none; } /* Hides text on very tiny screens, keeping the icon visible */
   .app-header-logo { border-right: none; }
+  }
+@media (max-width: 900px) {
+  .header-greeting {
+  display: none;
+  }
+  .app-header-main {
+  justify-content: flex-end;
+  gap: 6px;
+  }
   }
