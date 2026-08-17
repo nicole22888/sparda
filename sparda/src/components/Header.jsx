@@ -1,32 +1,43 @@
-export default function Header({ activeTab }) {
-  const titles = {
-    uebersicht: 'Finanzübersicht',
-    umsaetze: 'Umsätze & Suche',
-    ueberweisung: 'Überweisung',
-    dauerauftrag: 'Daueraufträge',
-    depot: 'UnionDepot Portfolio',
-    karten: 'Kartenverwaltung',
-    postfach: 'Elektronisches Postfach',
-    einstellungen: 'Einstellungen'
-  };
+import React from 'react';
 
-  return (
-    <header style={{ backgroundColor: '#fff', borderBottom: '1px solid #e2e8f0', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#0f172a' }}>
-        {titles[activeTab] || 'Online-Banking'}
+const Header = ({ goTo, onLogout }) => {
+return (
+<header className="app-header">
+  <div className="app-header-logo">
+    <div className="logo-icon">
+      <svg viewBox="0 0 100 100"><text y=".9em" fontSize="80" fontFamily="serif" fontWeight="bold" fill="white">S</text></svg>
+    </div>
+    <span className="logo-label">Sparda-<span>Bank</span></span>
+  </div>
+
+  <div className="app-header-main">
+    <div className="header-greeting">Guten Tag, <strong>Thomas Müller</strong></div>
+
+    <div className="header-actions">
+      <button className="header-btn mail-btn" onClick={() => goTo('postfach')}>
+        📬 Postfach
+        <span className="mail-badge">3</span>
+      </button>
+
+      <button className="header-btn">🔔</button>
+
+      <div className="header-user" onClick={() => goTo('profil')}>
+        <div className="user-avatar">TM</div>
+        <span className="user-name">Th. Müller</span>
+        <span style={{color:'var(--gray-400)',fontSize:'10px'}}>▾</span>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-        <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
-          Letzter Login: <span style={{ color: '#0f172a', fontWeight: '500' }}>Heute, 16:42 Uhr</span>
-        </div>
-        <button
-          onClick={() => alert('Sie wurden erfolgreich abgemeldet.')}
-          style={{ padding: '0.4rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '6px', backgroundColor: '#fff', color: '#dc2626', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 'bold' }}
-        >
-          Abmelden 🔒
-        </button>
-      </div>
-    </header>
-  );
-}
+      <button
+        className="header-btn"
+        onClick={onLogout}
+        style={{borderColor:'var(--red)',color:'var(--red)'}}
+      >
+        ⏏ Abmelden
+      </button>
+    </div>
+  </div>
+</header>
+);
+};
+
+export default Header;
