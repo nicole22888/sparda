@@ -1,131 +1,106 @@
 import { useState } from 'react';
+import './Login.css';
 
 export default function Login({ onLogin }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [user, setUser] = useState('Sparda1234512.05.85');
+  const [pin, setPin] = useState('123456');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
-    if (!username.trim() || !password.trim()) {
-      setErrorMessage('Bitte geben Sie Ihre NetKey-ID und Ihr Passwort ein.');
+    if (!user || !pin) {
+      alert('Bitte geben Sie Ihren Sparda-NetKey und Ihre PIN ein.');
       return;
     }
-
-    setErrorMessage('');
-      setIsLoading(true);
-
-    // Simulate network authentication request
-    setTimeout(() => {
-      setIsLoading(false);
-      onLogin();
-    }, 1200);
+    // Fire the prop function to transition to the App Shell
+    onLogin();
   };
 
   return (
-    <div className="login-wrapper">
-      <div className="login-card">
-        {/* Header / Logo */}
-        <div className="login-header">
-          <div className="login-logo-icon">
-            <svg viewBox="0 0 100 100">
-              <text y=".9em" fontSize="80" fontFamily="serif" fontWeight="bold" fill="white">
-                S
-              </text>
-            </svg>
-          </div>
-          <h1 className="login-title">Sparda-<span>Bank</span></h1>
-          <p className="login-subtitle">Anmeldung zum SpardaNetKey Online-Banking</p>
-        </div>
+    <>
+      <div className="demo-banner">
+        ⚠️ DEMO · Nur zu Demonstrations- und Lernzwecken · Kein echtes Konto · Demo for educational purposes only ⚠️
+      </div>
 
-        {/* Error Alert */}
-        {errorMessage && (
-          <div className="login-error-alert" role="alert">
-            <span className="error-icon">⚠️</span>
-            <span>{errorMessage}</span>
-          </div>
-        )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="login-form">
-          <div className="form-group">
-            <label htmlFor="netkey">SpardaNetKey / Alias</label>
-            <input
-              type="text"
-              id="netkey"
-              className="form-input"
-              placeholder="z. B. 12345678"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              disabled={isLoading}
-              autoComplete="username"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password">PIN / Passwort</label>
-            <div className="password-input-wrapper">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                className="form-input"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
-                autoComplete="current-password"
-              />
-              <button
-                type="button"
-                className="password-toggle-btn"
-                onClick={() => setShowPassword(!showPassword)}
-                tabIndex="-1"
-              >
-                {showPassword ? '🙈' : '👁️'}
-              </button>
+      <div className="login-screen">
+        <nav className="login-nav">
+          <a className="sparda-logo" href="#">
+            <div className="sparda-logo-icon">
+              <svg viewBox="0 0 100 100">
+                <text y=".9em" fontSize="80" fontFamily="serif" fontWeight="bold">S</text>
+              </svg>
             </div>
+            <span className="sparda-logo-text">Sparda-<span>Bank</span></span>
+          </a>
+          <div className="login-nav-links">
+            <a href="#">Girokonto</a>
+            <a href="#">Sparen</a>
+            <a href="#">Immobilien</a>
+            <a href="#">Versicherungen</a>
+            <a href="#">Depot</a>
+            <a href="#">Service</a>
           </div>
+        </nav>
 
-          <div className="form-options">
-            <label className="remember-label">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                disabled={isLoading}
-              />
-              <span>NetKey merken</span>
-            </label>
-            <a href="#forgot-pin" className="login-link" onClick={(e) => e.preventDefault()}>
-              PIN vergessen?
-            </a>
-          </div>
+        <div className="login-hero">
+          <div className="login-hero-inner">
+            <div className="login-hero-copy">
+              <h1>Ihr Banking.<br /><strong>Einfach. Sicher. Digital.</strong></h1>
+              <p>Mit dem Online-Banking der Sparda-Bank haben Sie Ihre Finanzen jederzeit im Blick – auf allen Geräten.</p>
+              <div className="login-hero-badges">
+                <span className="hero-badge">TÜV-geprüft sicher</span>
+                <span className="hero-badge">SpardaSecureGo+</span>
+                <span className="hero-badge">UnionDepot</span>
+                <span className="hero-badge">Echtzeit-Überweisung</span>
+              </div>
+            </div>
 
-          <button type="submit" className="login-submit-btn" disabled={isLoading}>
-            {isLoading ? (
-              <span className="spinner-container">
-                <span className="spinner"></span> Anmelden...
-              </span>
-            ) : (
-              'Sicher Anmelden →'
-            )}
-          </button>
-        </form>
+            <div className="login-card">
+              <h2>Online-Banking</h2>
+              <div className="login-card-sub">Melden Sie sich mit Ihrem Sparda-NetKey an.</div>
 
-        {/* Footer Security Badges */}
-        <div className="login-footer">
-          <div className="security-badge">
-            <span className="badge-icon">🔒</span> 256-Bit SSL Verschlüsselung
-          </div>
-          <div className="security-badge">
-            <span className="badge-icon">🛡️</span> SpardaSecureGo+ geschützt
+              <form onSubmit={handleSubmit}>
+                <div className="form-group">
+                  <label>Sparda-NetKey / Alias</label>
+                  <input 
+                    type="text" 
+                    value={user} 
+                    onChange={(e) => setUser(e.target.value)}
+                    placeholder="z.B. Sparda1234512.05.85" 
+                  />
+                  <div className="login-hint">z.B. Sparda + Kundennummer + Geburtsdatum (TTMMJJJJ)</div>
+                </div>
+
+                <div className="form-group">
+                  <label>Online-PIN (6-stellig)</label>
+                  <input 
+                    type="password" 
+                    value={pin} 
+                    onChange={(e) => setPin(e.target.value)}
+                    placeholder="••••••" 
+                  />
+                </div>
+
+                <button type="submit" className="btn-login">
+                  <span>🔐</span> Anmelden
+                </button>
+              </form>
+
+              <div className="login-links">
+                <a href="#">Alias vergessen?</a>
+                <a href="#">PIN vergessen?</a>
+              </div>
+
+              <div className="login-securego">
+                <span className="login-securego-icon">📱</span>
+                <div>
+                  <strong>SpardaSecureGo+</strong>
+                  Freigabe per App – kein TAN mehr nötig. Sicher und bequem.
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

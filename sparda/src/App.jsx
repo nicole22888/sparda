@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import Login from './components/Login';
 import Navigation from './components/Navigation';
 import Header from './components/Header';
 import PageKonto from './components/PageKonto';
@@ -12,6 +13,7 @@ import PageEinstellungen from './components/PageEinstellungen';
 import SecureGoModal from './components/SecureGoModal';
 
 export default function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeTab, setActiveTab] = useState('uebersicht');
   const [secureGoData, setSecureGoData] = useState(null);
 
@@ -53,6 +55,11 @@ export default function App() {
         return <PageKonto onNavigate={handleNavigate} />;
     }
   };
+
+  // Prevent accessing the dashboard without logging in
+  if (!isLoggedIn) {
+    return <Login onLogin={() => setIsLoggedIn(true)} />;
+  }
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc', fontFamily: 'Inter, system-ui, sans-serif' }}>
