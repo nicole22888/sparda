@@ -1,6 +1,4 @@
-import { Link } from 'react-router-dom';
-
-export default function PageKonto() {
+export default function PageKonto({ onNavigate }) {
   const accounts = [
     {
       id: 'giro',
@@ -43,14 +41,17 @@ export default function PageKonto() {
       {/* Page Title Header */}
       <div className="page-header" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--navy-900, #0a192f)' }}>Kontoübersicht</h1>
-          <p style={{ color: 'var(--gray-500, #64748b)', margin: '0.25rem 0 0 0', fontSize: '0.9rem' }}>
+          <h1 style={{ fontSize: '1.5rem', margin: 0, color: '#0a192f' }}>Kontoübersicht</h1>
+          <p style={{ color: '#64748b', margin: '0.25rem 0 0 0', fontSize: '0.9rem' }}>
             Willkommen zurück, ix_prinx
           </p>
         </div>
-        <Link to="/ueberweisung" className="btn-primary" style={{ textDecoration: 'none', padding: '0.6rem 1.2rem', backgroundColor: '#003A70', color: '#fff', borderRadius: '6px', fontWeight: 'bold' }}>
+        <button 
+          onClick={() => onNavigate('ueberweisung')} 
+          style={{ border: 'none', cursor: 'pointer', padding: '0.6rem 1.2rem', backgroundColor: '#003A70', color: '#fff', borderRadius: '6px', fontWeight: 'bold' }}
+        >
           + Neue Überweisung
-        </Link>
+        </button>
       </div>
 
       {/* Total Net Assets Banner */}
@@ -79,15 +80,18 @@ export default function PageKonto() {
         ))}
       </div>
 
-      {/* Two Column Layout: Recent Transactions & Quick Actions */}
+      {/* Two Column Layout */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
         {/* Recent Transactions List */}
         <div style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1.25rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Letzte Umsätze</h3>
-            <Link to="/umsaetze" style={{ fontSize: '0.85rem', color: '#003A70', textDecoration: 'none', fontWeight: 'bold' }}>
+            <button 
+              onClick={() => onNavigate('umsaetze')} 
+              style={{ background: 'none', border: 'none', fontSize: '0.85rem', color: '#003A70', fontWeight: 'bold', cursor: 'pointer' }}
+            >
               Alle anzeigen →
-            </Link>
+            </button>
           </div>
           <div className="transaction-list">
             {recentTransactions.map((tx) => (
@@ -104,25 +108,39 @@ export default function PageKonto() {
           </div>
         </div>
 
-        {/* Quick Actions / Shortcuts Panel */}
+        {/* Quick Actions Panel */}
         <div style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1.25rem' }}>
           <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem' }}>Schnellzugriff</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <Link to="/ueberweisung" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', border: '1px solid #f1f5f9', borderRadius: '6px', textDecoration: 'none', color: '#334155', fontWeight: '500' }}>
+            <button onClick={() => onNavigate('ueberweisung')} style={btnStyle}>
               <span>💸</span> Inland & SEPA Überweisung
-            </Link>
-            <Link to="/dauerauftrag" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', border: '1px solid #f1f5f9', borderRadius: '6px', textDecoration: 'none', color: '#334155', fontWeight: '500' }}>
+            </button>
+            <button onClick={() => onNavigate('dauerauftrag')} style={btnStyle}>
               <span>🔄</span> Dauerauftrag verwalten
-            </Link>
-            <Link to="/karten" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', border: '1px solid #f1f5f9', borderRadius: '6px', textDecoration: 'none', color: '#334155', fontWeight: '500' }}>
+            </button>
+            <button onClick={() => onNavigate('karten')} style={btnStyle}>
               <span>💳</span> Karte sperren / limitieren
-            </Link>
-            <Link to="/postfach" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', border: '1px solid #f1f5f9', borderRadius: '6px', textDecoration: 'none', color: '#334155', fontWeight: '500' }}>
+            </button>
+            <button onClick={() => onNavigate('postfach')} style={btnStyle}>
               <span>📬</span> Bank-Mitteilungen
-            </Link>
+            </button>
           </div>
         </div>
       </div>
     </div>
   );
 }
+
+const btnStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.75rem',
+  padding: '0.75rem',
+  border: '1px solid #f1f5f9',
+  borderRadius: '6px',
+  backgroundColor: '#fff',
+  color: '#334155',
+  fontWeight: '500',
+  cursor: 'pointer',
+  textAlign: 'left'
+};
