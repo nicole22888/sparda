@@ -168,7 +168,8 @@
   .login-securego strong { display: block; color: var(--gray-900); margin-bottom: 2px; }
 
   /* ─── APP SHELL ─── */
-  #app { display: none; min-height: calc(100vh - 30px); }
+  #app { display: block;
+  min-height: calc(100vh - 30px); }
 
   /* Header */
   .app-header {

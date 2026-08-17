@@ -34,9 +34,7 @@ setCurrentPage(page);
 const renderPage = () => {
 switch (currentPage) {
 case 'kontoübersicht':
-  return <div style={{ padding: '40px', fontSize: '30px' }}>
-  DASHBOARD TEST
-  </div>;
+  return <Dashboard goTo={goTo} />;
 
 case 'umsätze':
 return <Umsaetze goTo={goTo} />;
@@ -72,11 +70,10 @@ return (
 <Login onLogin={handleLogin} />
 );
 }
-
 return (
-<div id="app">
+  <div id="app">
 
-<header className="app-header">
+  <header className="app-header">
 
 <div className="app-header-logo">
 <div className="logo-icon">
@@ -139,7 +136,6 @@ fontSize: '10px'
 ▾
 </span>
 </div>
-
 <button
 className="header-btn"
 onClick={handleLogout}
@@ -155,11 +151,8 @@ color: 'var(--red)'
 </div>
 </header>
 
-
 <nav className="app-sidebar">
-
 <div className="sidebar-section">
-
 <div className="sidebar-section-title">
 Konten
 </div>
@@ -194,10 +187,7 @@ Umsätze
 
 
 <hr className="sidebar-divider" />
-
-
 <div className="sidebar-section">
-
 <div className="sidebar-section-title">
 Zahlungsverkehr
 </div>
@@ -232,8 +222,6 @@ Dauerauftrag
 
 
 <hr className="sidebar-divider" />
-
-
 <div className="sidebar-section">
 
 <div className="sidebar-section-title">
@@ -333,5 +321,4 @@ Profil & Sicherheit
 </div>
 );
 }
-
 export default App;
