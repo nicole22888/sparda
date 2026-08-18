@@ -27,7 +27,7 @@ app.use((req, res, next) => {
 });
 
 // ==========================================
-// 🛣️ ROUTE AGGREGATION & GATEWAY LAYER
+// ROUTE AGGREGATION & GATEWAY LAYER
 // ==========================================
 // Mount the consolidated Sparda routing system gateway we created
 const spardaRoutingGateway = require('./src/server/all_routes.cjs');
@@ -66,7 +66,7 @@ app.get('*', (req, res) => {
 // ==========================================
 // This terminal catch-block intercepts unhandled runtime exceptions thrown 
 // by any downstream service or generator file dynamically, ensuring absolute uptime.
-app.use((err, req, res, next) => {
+app.get('{*splat}', (req, res) => { 
   console.error("❌ CRITICAL SPARDA SERVICE EXCEPTION CAPTURED:");
   console.table({
     Timestamp: new Date().toISOString(),
