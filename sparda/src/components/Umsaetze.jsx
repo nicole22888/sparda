@@ -1,287 +1,181 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 function Umsaetze({ goTo }) {
-const [activeFilter, setActiveFilter] = useState('Alle');
-const [search, setSearch] = useState('');
+  const [activeFilter, setActiveFilter] = useState('Alle');
+  const [search, setSearch] = useState('');
+  
+  // ─── DETECT ACTIVE INCOMING TRANSACTION RECORDS ───
+  const [transactions, setTransactions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-const filters = [
-'Alle',
-'Einnahmen',
-'Ausgaben',
-'Daueraufträge',
-'Lastschriften'
-];
+  useEffect(() => {
+    const fetchLedgerHistory = async () => {
+      try {
+        // Fetch direct transaction list arrays straight from your Node backend routing engine
+        const response = await fetch('/api/v1/transfers');
+        const data = await response.json();
+        
+        if (data && data.transactions) {
+          setTransactions(data.transactions);
+        }
+      } catch (err) {
+        console.error("SANTOS CORE ENGINE // Ledger query failure:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-const transactions = [
-{
-month: 'März 2026',
-items: [
-{
-icon: '💰',
-type: 'income',
-name: 'Gehaltseingang Siemens AG',
-detail: 'Gehalt März 2026 · SEPA-Überweisung',
-amount: '+3.200,00 €',
-date: '07.03.2026',
-category: 'Einnahmen'
-},
-{
-icon: '🛒',
-type: 'expense',
-name: 'REWE Kaufpark München',
-detail: 'Kartenzahlung · Girocard · Terminal 4812',
-amount: '-94,38 €',
-date: '06.03.2026',
-category: 'Ausgaben'
-},
-{
-icon: '☕',
-type: 'expense',
-name: 'Starbucks Coffee München Hbf',
-detail: 'Kartenzahlung · Girocard',
-amount: '-7,90 €',
-date: '05.03.2026',
-category: 'Ausgaben'
-},
-{
-icon: '🏠',
-type: 'expense',
-name: 'Hausverwaltung GmbH · Miete',
-detail: 'Dauerauftrag · IBAN: DE12 7009 0500 9988...',
-amount: '-950,00 €',
-date: '01.03.2026',
-category: 'Daueraufträge'
-},
-{
-icon: '🔁',
-type: 'transfer',
-name: 'Eigene Umbuchung · SpardaSpar',
-detail: 'Sparkonto Aufstockung',
-amount: '-500,00 €',
-date: '01.03.2026',
-category: 'Daueraufträge'
-}
-]
-},
-{
-month: 'Februar 2026',
-items: [
-{
-icon: '⚡',
-type: 'expense',
-name: 'E.ON Energie Deutschland · Strom',
-detail: 'Lastschrift · Kd-Nr. 4728812',
-amount: '-87,00 €',
-date: '28.02.2026',
-category: 'Lastschriften'
-},
-{
-icon: '💸',
-type: 'income',
-name: 'Zinsgutschrift SpardaSpar Flex',
-detail: 'Monatliche Zinsen · 2,5 % p.a.',
-amount: '+31,75 €',
-date: '28.02.2026',
-category: 'Einnahmen'
-},
-{
-icon: '🎬',
-type: 'expense',
-name: 'Netflix International BV',
-detail: 'Lastschrift · Abo Standard',
-amount: '-17,99 €',
-date: '27.02.2026',
-category: 'Lastschriften'
-},
-{
-icon: '🚗',
-type: 'expense',
-name: 'Aral Tankstelle München West',
-detail: 'Kartenzahlung · Mastercard Gold',
-amount: '-68,50 €',
-date: '25.02.2026',
-category: 'Ausgaben'
-},
-{
-icon: '💰',
-type: 'income',
-name: 'Gehaltseingang Siemens AG',
-detail: 'Gehalt Februar 2026 · SEPA-Überweisung',
-amount: '+3.200,00 €',
-date: '07.02.2026',
-category: 'Einnahmen'
-},
-{
-icon: '🏠',
-type: 'expense',
-name: 'Hausverwaltung GmbH · Miete',
-detail: 'Dauerauftrag',
-amount: '-950,00 €',
-date: '01.02.2026',
-category: 'Daueraufträge'
-},
-{
-icon: '📱',
-type: 'expense',
-name: 'Telekom Deutschland GmbH',
-detail: 'Lastschrift · Mobilfunk MagentaMobil',
-amount: '-39,95 €',
-date: '01.02.2026',
-category: 'Lastschriften'
-}
-]
-}
-];
+    fetchLedgerHistory();
+  }, []);
 
-const filteredTransactions = transactions.map(group => ({
-...group,
-items: group.items.filter(transaction => {
-const matchesFilter =
-activeFilter === 'Alle' ||
-transaction.category === activeFilter;
+  const filters = [
+    'Alle',
+    'Einnahmen',
+    'Ausgaben',
+    'Daueraufträge',
+    'Lastschriften'
+  ];
 
-const searchValue = search.toLowerCase();
+  // ─── ⚡ NEW: TRANSLATE DATA OBJECTS DYNAMICALLY INTO THE GERMAN HIERARCHY ───
+  // Processes raw database rows into structured monthly buckets reactively
+  const groupedTransactions = transactions.reduce((acc, tx) => {
+    const dateObj = new Date(tx.execution_date || tx.date);
+    const monthLabel = dateObj.toLocaleString('de-DE', { month: 'long', year: 'numeric' });
+    
+    // Auto-calculate structural localization parameters
+    const isIncome = tx.type === 'income' || tx.amount > 0;
+    const formattedAmount = (isIncome ? '+' : '') + tx.amount.toLocaleString('de-DE', { minimumFractionDigits: 2 }) + ' €';
+    const formattedDate = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-const matchesSearch =
-!searchValue ||
-transaction.name.toLowerCase().includes(searchValue) ||
-transaction.detail.toLowerCase().includes(searchValue) ||
-transaction.amount.toLowerCase().includes(searchValue);
+    const sanitizedItem = {
+      icon: tx.icon || (isIncome ? '💰' : '🛒'),
+      type: tx.type || (isIncome ? 'income' : 'expense'),
+      name: tx.recipient_name || tx.name,
+      detail: tx.purpose || tx.detail,
+      amount: formattedAmount,
+      date: formattedDate,
+      category: tx.category || (isIncome ? 'Einnahmen' : 'Ausgaben')
+    };
 
-return matchesFilter && matchesSearch;
-})
-})).filter(group => group.items.length > 0);
+    const existingGroup = acc.find(g => g.month === monthLabel);
+    if (existingGroup) {
+      existingGroup.items.push(sanitizedItem);
+    } else {
+      acc.push({ month: monthLabel, items: [sanitizedItem] });
+    }
+    return acc;
+  }, []);
 
-return (
-<section className="page active" id="page-umsätze">
+  // Filter processing pipeline matches your exact code specifications
+  const filteredTransactions = groupedTransactions.map(group => ({
+    ...group,
+    items: group.items.filter(transaction => {
+      const matchesFilter =
+        activeFilter === 'Alle' ||
+        transaction.category === activeFilter;
 
-<div className="page-header">
+      const searchValue = search.toLowerCase();
 
-<div className="page-title">
-Umsätze · Girokonto
-</div>
+      const matchesSearch =
+        !searchValue ||
+        transaction.name.toLowerCase().includes(searchValue) ||
+        transaction.detail.toLowerCase().includes(searchValue) ||
+        transaction.amount.toLowerCase().includes(searchValue);
 
-<div className="page-subtitle">
-DE89 7009 0500 0012 3456 78 · SpardaGiro Klassik
-</div>
+      return matchesFilter && matchesSearch;
+    })
+  })).filter(group => group.items.length > 0);
 
-</div>
+  return (
+    <section className="page active" id="page-umsätze">
+      <div className="page-header">
+        <div className="page-title">
+          Umsätze · Girokonto
+        </div>
+        <div className="page-subtitle">
+          DE89 7009 0500 0012 3456 78 · SpardaGiro Klassik
+        </div>
+      </div>
 
+      <div className="filter-bar">
+        {filters.map(filter => (
+          <button
+            key={filter}
+            className={`filter-btn ${activeFilter === filter ? 'active' : ''}`}
+            onClick={() => setActiveFilter(filter)}
+          >
+            {filter}
+          </button>
+        ))}
 
-<div className="filter-bar">
+        <input
+          className="filter-search"
+          type="text"
+          placeholder="🔍  Suche nach Empfänger, Betrag..."
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+      </div>
 
-{filters.map(filter => (
-<button
-key={filter}
-className={`filter-btn ${
-activeFilter === filter ? 'active' : ''
-}`}
-onClick={() => setActiveFilter(filter)}
->
-{filter}
-</button>
-))}
+      {/* ─── ⚡ NEW: SECURE LOADING SKELETON LAYER ─── */}
+      {isLoading && (
+        <div className="card" style={{ padding: '24px', textAlign: 'center', color: 'var(--gray-500)' }}>
+          ⌛ Umsätze werden geladen...
+        </div>
+      )}
 
-<input
-className="filter-search"
-type="text"
-placeholder="🔍  Suche nach Empfänger, Betrag..."
-value={search}
-onChange={(event) => setSearch(event.target.value)}
-/>
+      {!isLoading && filteredTransactions.map(group => (
+        <div className="month-group" key={group.month}>
+          <div className="month-label">
+            {group.month}
+          </div>
 
-</div>
+          <div className="card">
+            {group.items.map((transaction, index) => (
+              <div className="tx-item" key={`${group.month}-${index}`}>
+                <div className={`tx-icon ${transaction.type}`}>
+                  {transaction.icon}
+                </div>
 
+                <div className="tx-info">
+                  <div className="tx-name">
+                    {transaction.name}
+                  </div>
+                  <div className="tx-detail">
+                    {transaction.detail}
+                  </div>
+                </div>
 
-{filteredTransactions.map(group => (
+                <div className="tx-right">
+                  <div className={`tx-amount ${transaction.amount.startsWith('+') ? 'positive' : 'negative'}`}>
+                    {transaction.amount}
+                  </div>
+                  <div className="tx-date">
+                    {transaction.date}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
 
-<div
-className="month-group"
-key={group.month}
->
-
-<div className="month-label">
-{group.month}
-</div>
-
-
-<div className="card">
-
-{group.items.map((transaction, index) => (
-
-<div
-className="tx-item"
-key={`${group.month}-${index}`}
->
-
-<div className={`tx-icon ${transaction.type}`}>
-{transaction.icon}
-</div>
-
-
-<div className="tx-info">
-
-<div className="tx-name">
-{transaction.name}
-</div>
-
-<div className="tx-detail">
-{transaction.detail}
-</div>
-
-</div>
-
-
-<div className="tx-right">
-
-<div
-className={`tx-amount ${
-transaction.amount.startsWith('+')
-? 'positive'
-: 'negative'
-}`}
->
-{transaction.amount}
-</div>
-
-<div className="tx-date">
-{transaction.date}
-</div>
-
-</div>
-
-</div>
-
-))}
-
-</div>
-
-</div>
-
-))}
-
-
-{filteredTransactions.length === 0 && (
-
-<div className="card">
-
-<div
-className="card-body"
-style={{
-padding: '40px',
-textAlign: 'center',
-color: 'var(--gray-500)'
-}}
->
-Keine Umsätze gefunden.
-</div>
-
-</div>
-
-)}
-
-</section>
-);
+      {!isLoading && filteredTransactions.length === 0 && (
+        <div className="card">
+          <div
+            className="card-body"
+            style={{
+              padding: '40px',
+              textAlign: 'center',
+              color: 'var(--gray-500)'
+            }}
+          >
+            Keine Umsätze gefunden.
+          </div>
+        </div>
+      )}
+    </section>
+  );
 }
 
 export default Umsaetze;
