@@ -33,6 +33,17 @@ app.use((req, res, next) => {
 const spardaRoutingGateway = require('./sparda/src/server/all_routes');
 app.use('/api/v1', spardaRoutingGateway);
 
+// Force a strict 404 JSON response for any unmatched /api/ routes 
+// so they don't accidentally serve the React index.html
+app.all('/api/*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    status: 404,
+    message: `API endpoint ${req.method} ${req.url} nicht gefunden.`,
+    error_code: 'API_ROUTE_NOT_FOUND'
+  });
+});
+
 //  PLUG-AND-PLAY ZONE FOR FUTURE MODULE INTEGRATIONS
 // To scale your architecture later without cluttering code, just attach new routes below:
 // app.use('/api/v1/loans', loanRoutingGateway);
@@ -81,7 +92,7 @@ app.use((err, req, res, next) => {
 });
 
 // ==========================================
-// 🚀 ENGINE BOOTSTRAP INITIALIZATION
+// BOOTSTRAP INITIALIZATION
 // ==========================================
 const serverInstance = app.listen(PORT, () => {
   console.log("==========================================================================");
