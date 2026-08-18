@@ -1,5 +1,5 @@
 // Import your existing bulletproof connection pool to the Docker/Supabase database
-const pool = require('../../../../db'); 
+const pool = require('../../db.cjs');
 
 /**
  * Service layer responsible for querying the live Supabase database,

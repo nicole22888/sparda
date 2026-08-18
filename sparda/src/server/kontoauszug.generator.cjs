@@ -1,6 +1,6 @@
 const PDFDocument = require('pdfkit');
 // Import your new database mapping service
-const KontoauszugService = require('./kontoauszug.service'); 
+const KontoauszugService = require('./kontoauszug.service.cjs'); 
 
 exports.generateOfficialKontoauszugStream = async (req, res) => {
   try {

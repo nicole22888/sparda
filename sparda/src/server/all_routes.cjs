@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
-const pool = require('../../../../db'); // Connects directly to your root db.js script
-const { generateOfficialKontoauszugStream } = require('./kontoauszug.generator');
+const pool = require('../../db.cjs');
+const { generateOfficialKontoauszugStream } = require('./kontoauszug.generator.cjs');
 
 // Temporary structural reference token matching your database seeding netkey configuration rule
 const TARGET_USER_NETKEY = 'Sparda1234512.05.85';
 
 /**
- * 🔑 Central Helper Utility
+ *  Central Helper Utility
  * Extracts the user UUID hash safely from the array stream to feed down to other route pipelines.
  */
 const getActiveUserId = async () => {
@@ -18,7 +18,7 @@ const getActiveUserId = async () => {
 };
 
 // =========================================================================
-// 🔑 1. AUTHENTICATION CONTROLLER ENDPOINT (Called by Login.jsx)
+// 1. AUTHENTICATION ENDPOINT (Called by Login.jsx)
 // =========================================================================
 router.post('/auth/login', async (req, res, next) => {
   try {
@@ -34,7 +34,7 @@ router.post('/auth/login', async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'Anmeldedaten sind ungültig (Falscher NetKey oder PIN).' });
     }
 
-    const userRow = result.rows[0]; // ⚡ FIXED: Extract the raw object layer from index 0
+    const userRow = result.rows[0]; 
 
     // Cryptographic decryption check against the hashed database string parameters
     const match = await bcrypt.compare(pin, userRow.pin_hash);
@@ -52,19 +52,19 @@ router.post('/auth/login', async (req, res, next) => {
       }
     });
   } catch (err) {
-    next(err); // Relays errors to the centralized dynamic catch-block in server.js
+    next(err);
   }
 });
 
-// =========================================================================
-// 🔔 2. LIVE SYSTEM MAIL BOX COUNT METRICS (Called by Header.jsx)
-// =========================================================================
+// =========================
+//  (Called by Header.jsx)
+// =========================
 router.get('/user/notifications/summary', async (req, res, next) => {
   try {
     const userId = await getActiveUserId();
 
     const txCountResult = await pool.query('SELECT COUNT(*) FROM transactions WHERE user_id = $1', [userId]);
-    const totalTransactions = parseInt(txCountResult.rows[0].count, 10); // ⚡ FIXED: Access via rows[0]
+    const totalTransactions = parseInt(txCountResult.rows[0].count, 10);
 
     const dynamicUnreadMails = totalTransactions > 5 ? 4 : 3;
 
@@ -74,9 +74,9 @@ router.get('/user/notifications/summary', async (req, res, next) => {
   }
 });
 
-// =========================================================================
-// 💸 3. SEPA BALANCING TRANSACTION AND DOUBLE-ENTRY REGISTRY (Called by Ueberweisung.jsx)
-// =========================================================================
+// ============================
+// (Called by Ueberweisung.jsx)
+// ============================
 router.post('/transfers', async (req, res, next) => {
   let client;
   try {
@@ -89,11 +89,9 @@ router.post('/transfers', async (req, res, next) => {
     const userId = await getActiveUserId();
     const parsedAmount = Math.abs(parseFloat(amount));
 
-    // Acquire worker thread for database multi-query tracking safety
     client = await pool.connect();
     await client.query('BEGIN');
 
-    // 1. Double-Entry Balancing Math: Deduct liquidity from the main Giro pool
     const updateGiroSql = `
       UPDATE balances 
       SET giro_balance = giro_balance - $1 
@@ -155,9 +153,9 @@ router.post('/transfers', async (req, res, next) => {
   }
 });
 
-// =========================================================================
-// 📊 4. CHRONOLOGICAL RECONCILIATION SELECTION (Called by Umsaetze.jsx)
-// =========================================================================
+// =========================
+// (Called by Umsaetze.jsx)
+// =========================
 router.get('/transfers', async (req, res, next) => {
   try {
     const userId = await getActiveUserId();
@@ -170,9 +168,9 @@ router.get('/transfers', async (req, res, next) => {
   }
 });
 
-// =========================================================================
-// 📈 5. SAVINGS INTEREST LEDGER HISTORY VIEW (Called by Sparkonto.jsx)
-// =========================================================================
+// =========================
+// (Called by Sparkonto.jsx)
+// =========================
 router.get('/sparkonto', async (req, res, next) => {
   try {
     const userId = await getActiveUserId();
@@ -182,7 +180,7 @@ router.get('/sparkonto', async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      balance: parseFloat(balanceResult.rows[0].spar_balance), // ⚡ FIXED: Added index indicator bracket [0]
+      balance: parseFloat(balanceResult.rows[0].spar_balance), 
       history: historyResult.rows
     });
   } catch (err) {
@@ -190,15 +188,15 @@ router.get('/sparkonto', async (req, res, next) => {
   }
 });
 
-// =========================================================================
-// 🔒 6. DYNAMIC CARDS TOGGLE PROCESSOR (Called by Karten.jsx)
-// =========================================================================
+// =======================
+// (Called by Karten.jsx)
+// =======================
 router.get('/cards/settings', async (req, res, next) => {
   try {
     const userId = await getActiveUserId();
     const result = await pool.query('SELECT contactless, online_payments, foreign_payments FROM security_profiles WHERE user_id = $1 LIMIT 1', [userId]);
     
-    const settingsRow = result.rows[0]; // ⚡ FIXED: Added structural index mapping bracket [0]
+    const settingsRow = result.rows[0]; 
     
     return res.status(200).json({
       success: true,
@@ -238,9 +236,9 @@ router.post('/cards/settings', async (req, res, next) => {
   }
 });
 
-// =========================================================================
-// 📈 7. INVESTMENT PORTFOLIO EVALUATOR (Called by Depot.jsx)
-// =========================================================================
+// ========================
+//  (Called by Depot.jsx)
+// ========================
 router.get('/depot', async (req, res, next) => {
   try {
     const userId = await getActiveUserId();
@@ -248,7 +246,7 @@ router.get('/depot', async (req, res, next) => {
     const balanceResult = await pool.query('SELECT depot_value, depot_cost_basis FROM balances WHERE user_id = $1 LIMIT 1', [userId]);
     const positionsResult = await pool.query('SELECT name, isin, shares, value, performance, icon, sparplan_info AS "sparplanInfo" FROM depot_positions WHERE user_id = $1', [userId]);
     
-    const balanceRow = balanceResult.rows[0]; // ⚡ FIXED: Added structural array extraction bracket [0]
+    const balanceRow = balanceResult.rows[0];
     
     return res.status(200).json({
       success: true,
@@ -266,9 +264,9 @@ router.get('/depot', async (req, res, next) => {
   }
 });
 
-// =========================================================================
-// 🛡️ 8. USER PROFILE CONFIGURATION OVERRIDES (Called by Profil.jsx)
-// =========================================================================
+// =======================
+// (Called by Profil.jsx)
+// =======================
 router.post('/user/settings', async (req, res, next) => {
   try {
     const { field, value } = req.body;
@@ -296,9 +294,9 @@ router.post('/user/settings', async (req, res, next) => {
   }
 });
 
-// =========================================================================
-// 🏠 10. STANDING ORDERS LEDGER CONTROLLER (Called by Dauerauftrag.jsx)
-// =========================================================================
+// ==============================
+// (Called by Dauerauftrag.jsx)
+// ==============================
 router.get('/dauerauftraege', async (req, res, next) => {
 try {
 const userId = await getActiveUserId();
@@ -314,9 +312,9 @@ next(err);
 }
 });
 
-// =========================================================================
-// 📄 9. OFFICIAL ELEKTRONISCHER KONTOAUSZUG STREAM (Called by Postfach.jsx)
-// =========================================================================
+// =========================
+// (Called by Postfach.jsx)
+// =========================
 router.get('/sparda/kontoauszug/:trackingNumber', generateOfficialKontoauszugStream);
 
 module.exports = router;

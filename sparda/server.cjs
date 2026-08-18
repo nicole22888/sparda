@@ -30,7 +30,7 @@ app.use((req, res, next) => {
 // 🛣️ ROUTE AGGREGATION & GATEWAY LAYER
 // ==========================================
 // Mount the consolidated Sparda routing system gateway we created
-const spardaRoutingGateway = require('./sparda/src/server/all_routes');
+const spardaRoutingGateway = require('./src/server/all_routes.cjs');
 app.use('/api/v1', spardaRoutingGateway);
 
 // Force a strict 404 JSON response for any unmatched /api/ routes 
