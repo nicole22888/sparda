@@ -666,70 +666,90 @@ display: flex; align-items: center; justify-content: center;
   padding: 4px 8px;
   margin-right: 10px;
              }
-    /* RESPONSIVE TWEAK*/
-
+/* Responsive tweaks */
 @media (max-width: 900px) {
-  .app-main { margin-left: 0; }
-  .app-header-logo { width: auto; border-right: none; }
-  .mobile-menu-btn { display: block; } 
+/* Main layout adjustments */
+.app-main { margin-left: 0; }
+.app-header-logo { width: auto; border-right: none; }
+.mobile-menu-btn { display: block; } /* Show hamburger on mobile */
 
-  .app-sidebar { 
-  transform: translateX(-100%); 
-  transition: transform 0.3s ease;
-  z-index: 1000;
-  box-shadow: 4px 0 20px rgba(0,0,0,0.1);
-  }
+/* Slide sidebar off-screen by default */
+.app-sidebar { 
+transform: translateX(-100%); 
+transition: transform 0.3s ease;
+z-index: 1000;
+box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+}
 
-  .app-sidebar.mobile-open { 
-  transform: translateX(0);
-  }
+/* Class applied via React when hamburger is clicked */
+.app-sidebar.mobile-open { 
+transform: translateX(0);
+}
 
-  /* Grid Stacking */
-  .account-cards { grid-template-columns: 1fr 1fr; }
-  .content-grid { grid-template-columns: 1fr; }
-  .stats-row { grid-template-columns: 1fr 1fr; }
-  .postfach-layout { grid-template-columns: 1fr; }
-  .profil-grid { grid-template-columns: 1fr; }
+/* Grid stacking */
+.account-cards { grid-template-columns: 1fr 1fr; }
+.content-grid { grid-template-columns: 1fr; }
+.stats-row { grid-template-columns: 1fr 1fr; }
+.postfach-layout { grid-template-columns: 1fr; }
+.profil-grid { grid-template-columns: 1fr; }
 
-  /* Hide greeting */
-  .header-greeting {
-  display: none !important;
-  }
+/* Hide greeting and give breathing room to action buttons */
+.header-greeting {
+display: none !important;
+}
 
-  .app-header-main {
-  justify-content: flex-end !important;
-  gap: 8px;
-  }
+.app-header-main {
+justify-content: flex-end !important;
+gap: 6px;
+}
 
-  /*  NEW RE-PROCESSING COMPONENT TEXTS */
-  .app-header-main .username {
-  display: none; /* Safely hides text string "Th. Müller" so only the circular icon remains */
-  }
+/* ⚡ FIXED: ACTION CONTAINER LAYER RE-PROCESSING */
+.header-actions {
+margin-left: 0 !important;   /* Cancels the aggressive desktop right-side push */
+flex-wrap: wrap !important;   /* Permits elements to break lines cleanly on tight margins */
+gap: 6px !important;
+}
 
-  .app-header-main .logout-btn-label {
-  display: none; /* Optional: Hides "Abmelden" text, leaving only the icon visible if you have one */
-  }
-  }
+/* ⚡ FIXED: COMPONENT TEXT STRIPPING FOR NARROW MOBILE TRACKS */
+.header-user {
+padding: 6px 4px !important; /* Shaves padding footprint down */
+}
 
-  @media (min-width: 901px) {
-  .header-greeting { max-width: none; }
-  }
+.header-user .user-name {
+display: none !important;    /* Safely drops "Th. Müller" so only the circular TM icon remains */
+}
 
-  @media (max-width: 600px) {
-  .account-cards { grid-template-columns: 1fr; }
-  .stats-row { grid-template-columns: 1fr; }
-  .cards-grid { grid-template-columns: 1fr; }
-  .page { padding: 16px; } 
-  .login-hero-inner { grid-template-columns: 1fr; gap: 40px; }
+/* Hides the floating dropdown caret character adjacent to the avatar */
+.header-user span[style*="font-size"] {
+display: none !important;
+}
 
-  /* On extremely narrow screens, force header elements to pack together cleanly */
-  .app-header-main {
-  justify-content: space-around !important;
-  padding: 4px;
-  }
-  }
+/* Compact button scaling parameters to ensure zero right-edge clipping */
+.header-btn {
+padding: 6px 8px !important;
+font-size: 13px !important;
+}
+}
 
-  @media (max-width: 480px) {
-  .app-header-logo .logo-label { display: none; }
-  .app-header-logo { border-right: none; }
-  }
+@media (min-width: 901px) {
+.header-greeting { max-width: none; }
+}
+
+@media (max-width: 600px) {
+.account-cards { grid-template-columns: 1fr; }
+.stats-row { grid-template-columns: 1fr; }
+.cards-grid { grid-template-columns: 1fr; }
+.page { padding: 16px; } 
+.login-hero-inner { grid-template-columns: 1fr; gap: 40px; }
+
+/* On extremely narrow screens, force header elements to pack together cleanly */
+.app-header-main {
+justify-content: space-around !important;
+padding: 4px;
+}
+}
+
+@media (max-width: 480px) {
+.app-header-logo .logo-label { display: none; }
+.app-header-logo { border-right: none; }
+}
