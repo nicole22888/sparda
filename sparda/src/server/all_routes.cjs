@@ -4,17 +4,17 @@ const bcrypt = require('bcrypt');
 const pool = require('../../db.cjs');
 const { generateOfficialKontoauszugStream } = require('./kontoauszug.generator.cjs');
 
-// Temporary structural reference token matching your database seeding netkey configuration rule
+// Target user netkey matching Jareed Lacosta
 const TARGET_USER_NETKEY = 'Jareed Lacosta';
 
 /**
- *  Central Helper Utility
- * Extracts the user UUID hash safely from the array stream to feed down to other route pipelines.
+ * Central Helper Utility
+ * Safe UUID fetcher for route pipelines
  */
 const getActiveUserId = async () => {
-  const result = await pool.query('SELECT id FROM users WHERE netkey = $1 LIMIT 1', [TARGET_USER_NETKEY]);
+  const result = await pool.query('SELECT id FROM users WHERE netkey ILIKE $1 LIMIT 1', [TARGET_USER_NETKEY]);
   if (result.rows.length === 0) throw new Error('User registry entry missing inside database.');
-  return result.rows[0].id; 
+  return result.rows[0].id; // Returns UUID string
 };
 
 // =========================================================================
@@ -28,7 +28,10 @@ router.post('/auth/login', async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'NetKey und PIN sind erforderlich.' });
     }
 
-    const result = await pool.query('SELECT id, pin_hash, first_name, last_name, kundennummer FROM users WHERE netkey = $1 LIMIT 1', [netKey.trim()]);
+    const result = await pool.query(
+      'SELECT id, pin_hash, first_name, last_name, kundennummer FROM users WHERE netkey ILIKE $1 LIMIT 1', 
+      [netKey.trim()]
+    );
 
     if (result.rows.length === 0) {
       return res.status(401).json({ success: false, message: 'Anmeldedaten sind ungültig (Falscher NetKey oder PIN).' });
@@ -36,7 +39,6 @@ router.post('/auth/login', async (req, res, next) => {
 
     const userRow = result.rows[0]; 
 
-    // Cryptographic decryption check against the hashed database string parameters
     const match = await bcrypt.compare(pin, userRow.pin_hash);
     if (!match) {
       return res.status(401).json({ success: false, message: 'Anmeldedaten sind ungültig (Falscher NetKey oder PIN).' });
@@ -46,9 +48,10 @@ router.post('/auth/login', async (req, res, next) => {
       success: true,
       message: 'Erfolgreich angemeldet.',
       user: {
-        name: `${userRow.first_name} ${userRow.last_name}`,
+        id: userRow.id,
+        name: `${userRow.first_name || ''} ${userRow.last_name || ''}`.trim(),
         accountType: 'SpardaGiro Klassik',
-        kundennummer: userRow.kundennummer
+        kundennummer: userRow.kundennummer || '123456'
       }
     });
   } catch (err) {
@@ -56,8 +59,33 @@ router.post('/auth/login', async (req, res, next) => {
   }
 });
 
+// =========================================================================
+// 2. DASHBOARD BALANCES ENDPOINT (Called by Dashboard.jsx)
+// =========================================================================
+router.get('/balances', async (req, res, next) => {
+  try {
+    const userId = await getActiveUserId();
+    const result = await pool.query(
+      'SELECT giro_balance, spar_balance, depot_value, depot_cost_basis FROM balances WHERE user_id = $1 LIMIT 1', 
+      [userId]
+    );
+
+    const balanceRow = result.rows.length ? result.rows[0] : { giro_balance: 0, spar_balance: 0, depot_value: 0, depot_cost_basis: 0 };
+
+    return res.status(200).json({
+      success: true,
+      giroBalance: parseFloat(balanceRow.giro_balance),
+      sparBalance: parseFloat(balanceRow.spar_balance),
+      depotValue: parseFloat(balanceRow.depot_value),
+      depotCostBasis: parseFloat(balanceRow.depot_cost_basis)
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // =========================
-//  (Called by Header.jsx)
+// (Called by Header.jsx)
 // =========================
 router.get('/user/notifications/summary', async (req, res, next) => {
   try {
@@ -80,16 +108,14 @@ router.get('/user/notifications/summary', async (req, res, next) => {
 router.post('/transfers', async (req, res, next) => {
   let client;
   try {
-    // Added transaction_pin to the destructured body request
     const { trackingNumber, recipientName, recipientIban, recipientBic, amount, purpose, executionDate, transaction_pin } = req.body;
 
     if (!recipientName || !recipientIban || !amount) {
       return res.status(400).json({ success: false, message: 'Fehlende Pflichtfelder für die Überweisung.' });
     }
     
-    // We fetch the full user context for the transfer to validate security layers
     const userQuery = await pool.query(
-      'SELECT id, transaction_pin_hash, transfer_count FROM users WHERE netkey = $1 LIMIT 1',
+      'SELECT id, transaction_pin_hash, transfer_count FROM users WHERE netkey ILIKE $1 LIMIT 1',
       [TARGET_USER_NETKEY]
     );
 
@@ -98,9 +124,9 @@ router.post('/transfers', async (req, res, next) => {
     }
 
     const user = userQuery.rows[0];
-    const userId = user.id;
+    const userId = user.id; // Guaranteed UUID
 
-    // THE VAULT LOCK: Block if 5 or more transfers have been made
+    // SECURITY VAULT LOCK: 5 or more transfers trigger lock
     if (user.transfer_count >= 5) {
       return res.status(403).json({
         success: false,
@@ -109,14 +135,14 @@ router.post('/transfers', async (req, res, next) => {
       });
     }
 
-    // Vault validation of the transaction pin via PostgreSQL pgcrypto comparison
+    // Vault PIN Check using pgcrypto crypt()
     if (transaction_pin) {
       const pinCheck = await pool.query(
         'SELECT crypt($1, transaction_pin_hash) = transaction_pin_hash AS is_valid FROM users WHERE id = $2',
         [transaction_pin, userId]
       );
 
-      if (!pinCheck.rows[0].is_valid) {
+      if (!pinCheck.rows[0] || !pinCheck.rows[0].is_valid) {
         return res.status(401).json({ success: false, message: 'Ungültige Transaktions-PIN (Transaction PIN Invalid).' });
       }
     } else {
@@ -128,33 +154,32 @@ router.post('/transfers', async (req, res, next) => {
     client = await pool.connect();
     await client.query('BEGIN');
 
-    // 1. Increment the security counter locking mechanism
+    // 1. Increment counter lock
     await client.query(
-      'UPDATE users SET transfer_count = transfer_count + 1 WHERE id = $1',
+      'UPDATE users SET transfer_count = COALESCE(transfer_count, 0) + 1 WHERE id = $1',
       [userId]
     );
 
-    // 2. Process Giro balance deduction
-    const updateGiroSql = `
-      UPDATE balances 
-      SET giro_balance = giro_balance - $1 
-      WHERE user_id = $2;
-    `;
-    await client.query(updateGiroSql, [parsedAmount, userId]);
+    // 2. Deduct Giro balance
+    await client.query(
+      'UPDATE balances SET giro_balance = giro_balance - $1::numeric WHERE user_id = $2',
+      [parsedAmount, userId]
+    );
 
-    // 3. Conditional Routing Hook: If transfer targets internal savings, sync balances dynamically
+    // 3. Internal transfer check
     const cleanRecipient = String(recipientName).toLowerCase();
     const cleanPurpose = String(purpose).toLowerCase();
     
     if (cleanRecipient.includes('spardaspar') || cleanPurpose.includes('spardaspar')) {
-      const updateSparSql = 'UPDATE balances SET spar_balance = spar_balance + $1 WHERE user_id = $2';
-      await client.query(updateSparSql, [parsedAmount, userId]);
+      await client.query(
+        'UPDATE balances SET spar_balance = spar_balance + $1::numeric WHERE user_id = $2',
+        [parsedAmount, userId]
+      );
 
-      const insertSavingsSql = `
+      await client.query(`
         INSERT INTO savings_history (user_id, name, detail, amount, date, type, icon)
         VALUES ($1, $2, $3, $4, $5, $6, $7);
-      `;
-      await client.query(insertSavingsSql, [
+      `, [
         userId, 
         'Einzahlung vom Girokonto', 
         purpose || 'Sparrate', 
@@ -165,16 +190,15 @@ router.post('/transfers', async (req, res, next) => {
       ]);
     }
 
-    // 4. Log the permanent tracking ledger row into the Umsaetze table
-    const insertTxSql = `
+    // 4. Log transaction entry
+    await client.query(`
       INSERT INTO transactions (user_id, tracking_number, execution_date, amount, type, recipient_name, purpose, category, icon)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
-    `;
-    await client.query(insertTxSql, [
+    `, [
       userId,
       trackingNumber || `SP-TX-${Date.now()}-DE`,
       executionDate ? new Date(executionDate).toISOString() : new Date().toISOString(),
-      -parsedAmount, // Force negative formatting logic on all debits
+      -parsedAmount,
       'expense',
       recipientName,
       purpose || 'SEPA-Überweisung',
@@ -206,8 +230,10 @@ router.post('/transfers', async (req, res, next) => {
 router.get('/transfers', async (req, res, next) => {
   try {
     const userId = await getActiveUserId();
-    
-    const result = await pool.query('SELECT tracking_number, execution_date, amount, type, recipient_name, purpose, category, icon FROM transactions WHERE user_id = $1 ORDER BY execution_date DESC', [userId]);
+    const result = await pool.query(
+      'SELECT tracking_number, execution_date, amount, type, recipient_name, purpose, category, icon FROM transactions WHERE user_id = $1 ORDER BY execution_date DESC', 
+      [userId]
+    );
     
     return res.status(200).json({ success: true, transactions: result.rows });
   } catch (err) {
@@ -227,7 +253,7 @@ router.get('/sparkonto', async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      balance: parseFloat(balanceResult.rows[0].spar_balance), 
+      balance: balanceResult.rows.length ? parseFloat(balanceResult.rows[0].spar_balance) : 0, 
       history: historyResult.rows
     });
   } catch (err) {
@@ -243,7 +269,7 @@ router.get('/cards/settings', async (req, res, next) => {
     const userId = await getActiveUserId();
     const result = await pool.query('SELECT contactless, online_payments, foreign_payments FROM security_profiles WHERE user_id = $1 LIMIT 1', [userId]);
     
-    const settingsRow = result.rows[0]; 
+    const settingsRow = result.rows.length ? result.rows[0] : { contactless: true, online_payments: true, foreign_payments: true };
     
     return res.status(200).json({
       success: true,
@@ -284,7 +310,7 @@ router.post('/cards/settings', async (req, res, next) => {
 });
 
 // ========================
-//  (Called by Depot.jsx)
+// (Called by Depot.jsx)
 // ========================
 router.get('/depot', async (req, res, next) => {
   try {
@@ -293,7 +319,7 @@ router.get('/depot', async (req, res, next) => {
     const balanceResult = await pool.query('SELECT depot_value, depot_cost_basis FROM balances WHERE user_id = $1 LIMIT 1', [userId]);
     const positionsResult = await pool.query('SELECT name, isin, shares, value, performance, icon, sparplan_info AS "sparplanInfo" FROM depot_positions WHERE user_id = $1', [userId]);
     
-    const balanceRow = balanceResult.rows[0];
+    const balanceRow = balanceResult.rows.length ? balanceResult.rows[0] : { depot_value: 0, depot_cost_basis: 0 };
     
     return res.status(200).json({
       success: true,
@@ -347,11 +373,10 @@ router.get('/dauerauftraege', async (req, res, next) => {
   try {
     const userId = await getActiveUserId();
     const result = await pool.query(
-    'SELECT id, recipient_name, recipient_iban, amount, schedule_text, icon, bg_color FROM standing_orders WHERE user_id = $1 ORDER BY created_at DESC',
-    [userId]
+      'SELECT id, recipient_name, recipient_iban, amount, schedule_text, icon, bg_color FROM standing_orders WHERE user_id = $1 ORDER BY created_at DESC',
+      [userId]
     );
 
-    // Fallback: If your database table row count is clean, send success with empty array so UI fallbacks trigger safely
     return res.status(200).json({ success: true, orders: result.rows });
   } catch (err) {
     next(err);
