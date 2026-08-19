@@ -77,8 +77,11 @@ exports.generateOfficialKontoauszugStream = async (req, res) => {
        .text(tx.bookingDate, 40, currentY)
        .text(tx.valutaDate, 40, currentY + 12, { fill: '#64748b' });
 
-    const formattedAmount = tx.amount.toLocaleString('de-DE', { minimumFractionDigits: 2 });
-    doc.fillColor('#b91c1c').font('Helvetica-Bold').fontSize(10)
+    // DYNAMIC COLOR LOGIC: Red for debits (-), Green for credits (+)
+    const amountColor = tx.amount < 0 ? '#b91c1c' : '#15803d'; 
+    const formattedAmount = (tx.amount > 0 ? '+' : '') + tx.amount.toLocaleString('de-DE', { minimumFractionDigits: 2 });
+    
+    doc.fillColor(amountColor).font('Helvetica-Bold').fontSize(10)
        .text(`${formattedAmount}`, 400, currentY, { align: 'right', width: 155 });
 
     doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(9).text(tx.type, 130, currentY);

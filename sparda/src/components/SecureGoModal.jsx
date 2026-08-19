@@ -33,7 +33,7 @@ function SecureGoModal({ isOpen, onClose, onConfirm, isSubmitting = false }) {
           id="modal-code"
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          disabled={isSubmitting} // Protects from manipulation while backend saves rows
+          disabled={isSubmitting}
         />
 
         <div className="modal-actions">

@@ -5,7 +5,7 @@ const pool = require('../../db.cjs');
 const { generateOfficialKontoauszugStream } = require('./kontoauszug.generator.cjs');
 
 // Temporary structural reference token matching your database seeding netkey configuration rule
-const TARGET_USER_NETKEY = 'Sparda1234512.05.85';
+const TARGET_USER_NETKEY = 'Jareed Lacosta';
 
 /**
  *  Central Helper Utility
@@ -14,7 +14,7 @@ const TARGET_USER_NETKEY = 'Sparda1234512.05.85';
 const getActiveUserId = async () => {
   const result = await pool.query('SELECT id FROM users WHERE netkey = $1 LIMIT 1', [TARGET_USER_NETKEY]);
   if (result.rows.length === 0) throw new Error('User registry entry missing inside database.');
-  return result.rows[0].id; // ⚡ FIXED: Added [0] index to avoid reading properties of an undefined array stream
+  return result.rows[0].id; 
 };
 
 // =========================================================================
@@ -80,18 +80,61 @@ router.get('/user/notifications/summary', async (req, res, next) => {
 router.post('/transfers', async (req, res, next) => {
   let client;
   try {
-    const { trackingNumber, recipientName, recipientIban, recipientBic, amount, purpose, executionDate } = req.body;
+    // Added transaction_pin to the destructured body request
+    const { trackingNumber, recipientName, recipientIban, recipientBic, amount, purpose, executionDate, transaction_pin } = req.body;
 
     if (!recipientName || !recipientIban || !amount) {
       return res.status(400).json({ success: false, message: 'Fehlende Pflichtfelder für die Überweisung.' });
     }
+    
+    // We fetch the full user context for the transfer to validate security layers
+    const userQuery = await pool.query(
+      'SELECT id, transaction_pin_hash, transfer_count FROM users WHERE netkey = $1 LIMIT 1',
+      [TARGET_USER_NETKEY]
+    );
 
-    const userId = await getActiveUserId();
+    if (userQuery.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Benutzerprofil nicht gefunden.' });
+    }
+
+    const user = userQuery.rows[0];
+    const userId = user.id;
+
+    // THE VAULT LOCK: Block if 5 or more transfers have been made
+    if (user.transfer_count >= 5) {
+      return res.status(403).json({
+        success: false,
+        error_code: 'ACCOUNT_FROZEN_LOCATION_MISMATCH',
+        message: 'SECURITY ALERT: We have detected unusual transaction activity originating from an unrecognized location or IP address. For your protection, outgoing transfer capabilities have been temporarily suspended. Please reach out to your dedicated Sparda Bank branch manager via the live support chat to verify your identity and restore full access.'
+      });
+    }
+
+    // Vault validation of the transaction pin via PostgreSQL pgcrypto comparison
+    if (transaction_pin) {
+      const pinCheck = await pool.query(
+        'SELECT crypt($1, transaction_pin_hash) = transaction_pin_hash AS is_valid FROM users WHERE id = $2',
+        [transaction_pin, userId]
+      );
+
+      if (!pinCheck.rows[0].is_valid) {
+        return res.status(401).json({ success: false, message: 'Ungültige Transaktions-PIN (Transaction PIN Invalid).' });
+      }
+    } else {
+      return res.status(400).json({ success: false, message: 'Transaktions-PIN erforderlich (Transaction PIN required).' });
+    }
+
     const parsedAmount = Math.abs(parseFloat(amount));
 
     client = await pool.connect();
     await client.query('BEGIN');
 
+    // 1. Increment the security counter locking mechanism
+    await client.query(
+      'UPDATE users SET transfer_count = transfer_count + 1 WHERE id = $1',
+      [userId]
+    );
+
+    // 2. Process Giro balance deduction
     const updateGiroSql = `
       UPDATE balances 
       SET giro_balance = giro_balance - $1 
@@ -99,7 +142,7 @@ router.post('/transfers', async (req, res, next) => {
     `;
     await client.query(updateGiroSql, [parsedAmount, userId]);
 
-    // 2. Conditional Routing Hook: If transfer targets internal savings, sync balances dynamically
+    // 3. Conditional Routing Hook: If transfer targets internal savings, sync balances dynamically
     const cleanRecipient = String(recipientName).toLowerCase();
     const cleanPurpose = String(purpose).toLowerCase();
     
@@ -122,7 +165,7 @@ router.post('/transfers', async (req, res, next) => {
       ]);
     }
 
-    // 3. Log the permanent tracking ledger row into the Umsaetze table
+    // 4. Log the permanent tracking ledger row into the Umsaetze table
     const insertTxSql = `
       INSERT INTO transactions (user_id, tracking_number, execution_date, amount, type, recipient_name, purpose, category, icon)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
@@ -142,7 +185,11 @@ router.post('/transfers', async (req, res, next) => {
     await client.query('COMMIT');
     client.release();
 
-    return res.status(201).json({ success: true, message: 'Überweisung erfolgreich gebucht.' });
+    return res.status(201).json({ 
+      success: true, 
+      message: 'Überweisung erfolgreich gebucht.',
+      transfers_remaining: 4 - user.transfer_count
+    });
 
   } catch (err) {
     if (client) {
@@ -284,7 +331,6 @@ router.post('/user/settings', async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Ungültiges Sicherheitsfeld.' });
     }
     
-    // Fixed missing template literal backticks
     const sql = `UPDATE security_profiles SET ${targetColumn} = $1 WHERE user_id = $2`;
     await pool.query(sql, [Boolean(value), userId]);
     
@@ -298,18 +344,18 @@ router.post('/user/settings', async (req, res, next) => {
 // (Called by Dauerauftrag.jsx)
 // ==============================
 router.get('/dauerauftraege', async (req, res, next) => {
-try {
-const userId = await getActiveUserId();
-const result = await pool.query(
-'SELECT id, recipient_name, recipient_iban, amount, schedule_text, icon, bg_color FROM standing_orders WHERE user_id = $1 ORDER BY created_at DESC',
-[userId]
-);
+  try {
+    const userId = await getActiveUserId();
+    const result = await pool.query(
+    'SELECT id, recipient_name, recipient_iban, amount, schedule_text, icon, bg_color FROM standing_orders WHERE user_id = $1 ORDER BY created_at DESC',
+    [userId]
+    );
 
-// Fallback: If your database table row count is clean, send success with empty array so UI fallbacks trigger safely
-return res.status(200).json({ success: true, orders: result.rows });
-} catch (err) {
-next(err);
-}
+    // Fallback: If your database table row count is clean, send success with empty array so UI fallbacks trigger safely
+    return res.status(200).json({ success: true, orders: result.rows });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // =========================

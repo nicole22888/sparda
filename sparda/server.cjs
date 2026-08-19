@@ -49,7 +49,7 @@ app.all('/api/{*splat}', (req, res) => {
 // ==========================================
 // STATIC FRONTEND DISTRIBUTION DELIVERY
 // ==========================================
-app.use(express.static(path.join(__dirname, 'client/build')));
+app.use(express.static(path.join(__dirname, 'dist')));
 
 // ==========================================
 // REACT SPA FALLBACK
