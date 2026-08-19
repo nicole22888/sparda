@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const Login = ({ onLogin }) => {
   const [netKey, setNetKey] = useState('');
@@ -7,6 +7,20 @@ const Login = ({ onLogin }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isShaking, setIsShaking] = useState(false);
+
+  // ─── ⚡ NEW: AUTO-RESTORE SESSION ON REFRESH ───
+  useEffect(() => {
+    const savedSession = localStorage.getItem('sparda_user_session');
+    if (savedSession && onLogin) {
+      try {
+        const parsedUser = JSON.parse(savedSession);
+        onLogin(parsedUser);
+      } catch (err) {
+        console.error('Session restore failed, clearing corrupt data:', err);
+        localStorage.removeItem('sparda_user_session');
+      }
+    }
+  }, [onLogin]);
 
   const handleFormSubmit = async (e) => {
     e.preventDefault(); 
@@ -41,6 +55,9 @@ const Login = ({ onLogin }) => {
       }
 
       if (data.success && onLogin) {
+        // ─── ⚡ NEW: SAVE SESSION TO BROWSER STORAGE ───
+        localStorage.setItem('sparda_user_session', JSON.stringify(data.user));
+
         setTimeout(() => {
           onLogin(data.user);
         }, 5000);

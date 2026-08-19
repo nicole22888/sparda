@@ -1,18 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-function Profil() {
-  // Core UI Toggles State Handlers
-  const [secureGo, setSecureGo] = useState(true);
-  const [smartTan, setSmartTan] = useState(true);
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(true);
+function Profil({ user }) {
+  // ─── ⚡ DYNAMIC: INITIALIZE TOGGLES FROM DATABASE INSTEAD OF HARDCODING ───
+  const [secureGo, setSecureGo] = useState(user?.secure_go ?? false);
+  const [smartTan, setSmartTan] = useState(user?.smart_tan ?? false);
+  const [emailNotifications, setEmailNotifications] = useState(user?.email_notifications ?? false);
+  const [pushNotifications, setPushNotifications] = useState(user?.push_notifications ?? false);
 
-  // ─── ⚡ NEW: SECURE BACKEND SIMULATION INTERFACE STATE ───
+  // Sync state if the user object updates after initial mount
+  useEffect(() => {
+    if (user) {
+      if (user.secure_go !== undefined) setSecureGo(user.secure_go);
+      if (user.smart_tan !== undefined) setSmartTan(user.smart_tan);
+      if (user.email_notifications !== undefined) setEmailNotifications(user.email_notifications);
+      if (user.push_notifications !== undefined) setPushNotifications(user.push_notifications);
+    }
+  }, [user]);
+
+  // ─── ⚡ SECURE BACKEND SIMULATION INTERFACE STATE ───
   const [updatingField, setUpdatingField] = useState(null);
   const [error, setError] = useState('');
 
-  // ─── ⚡ NEW: ASYNCHRONOUS UPDATE HANDLER ───
-  // Dispatches state modifications straight to your Express backend simulation loop
+  // ─── ⚡ ASYNCHRONOUS UPDATE HANDLER ───
   const handleSecurityToggle = async (fieldName, currentValue, setterFunction) => {
     const newValue = !currentValue;
     setUpdatingField(fieldName);
@@ -33,8 +42,6 @@ function Profil() {
         throw new Error('Database pipeline rejection.');
       }
 
-      console.log(` Security Setting Updated: ${fieldName} ->`, newValue);
-
     } catch (err) {
       console.error('CRITICAL STATE MISMATCH // Reverting local UI element:', err);
       // Fail-Safe: Instantly roll toggle back to previous state if network drops
@@ -45,14 +52,27 @@ function Profil() {
     }
   };
 
+  // Helper to format date strings from the database safely
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    try {
+      return new Date(dateString).toLocaleDateString('de-DE');
+    } catch {
+      return dateString;
+    }
+  };
+
   return (
     <section className="page active" id="page-profil">
       <div className="page-header">
         <div className="page-title">Profil & Sicherheit</div>
-        <div className="page-subtitle">Kundennummer: 123456 · Mitglied seit 2011</div>
+        {/* ─── ⚡ PURE DYNAMIC: NO HARDCODED NUMBERS ─── */}
+        <div className="page-subtitle">
+          Kundennummer: {user?.kundennummer || '-'} · Mitglied seit {user?.mitglied_seit || '-'}
+        </div>
       </div>
 
-      {/* ─── ⚡ NEW: SERVER COMPLIANCE EXCEPTION BANNER ─── */}
+      {/* ─── ⚡ SERVER COMPLIANCE EXCEPTION BANNER ─── */}
       {error && (
         <div style={{ color: 'var(--red)', padding: '12px', background: '#fef2f2', borderRadius: '6px', marginBottom: '16px', fontSize: '14px' }}>
           ⚠️ {error}
@@ -63,39 +83,40 @@ function Profil() {
         <div className="profil-section">
           <div className="profil-section-title">Persönliche Daten</div>
 
+          {/* ─── ⚡ STRICT DATABASE SCHEMA BINDINGS ─── */}
           <div className="profil-row">
             <span className="profil-key">Vorname</span>
-            <span className="profil-value">Thomas</span>
+            <span className="profil-value">{user?.first_name || '-'}</span>
           </div>
 
           <div className="profil-row">
             <span className="profil-key">Nachname</span>
-            <span className="profil-value">Müller</span>
+            <span className="profil-value">{user?.last_name || '-'}</span>
           </div>
 
           <div className="profil-row">
             <span className="profil-key">Geburtsdatum</span>
-            <span className="profil-value">12.05.1985</span>
+            <span className="profil-value">{formatDate(user?.geburtsdatum)}</span>
           </div>
 
           <div className="profil-row">
             <span className="profil-key">Steuer-ID</span>
-            <span className="profil-value">14 xxx xx xxx</span>
+            <span className="profil-value">{user?.steuer_id || '-'}</span>
           </div>
 
           <div className="profil-row">
             <span className="profil-key">Adresse</span>
-            <span className="profil-value">Maximilianstr. 42, 80539 München</span>
+            <span className="profil-value">{user?.adresse || '-'}</span>
           </div>
 
           <div className="profil-row">
             <span className="profil-key">Telefon</span>
-            <span className="profil-value">+49 176 •••••••789</span>
+            <span className="profil-value">{user?.telefon || user?.phone || '-'}</span>
           </div>
 
           <div className="profil-row">
             <span className="profil-key">E-Mail</span>
-            <span className="profil-value">t.mueller@email.de</span>
+            <span className="profil-value">{user?.email || '-'}</span>
           </div>
 
           <div style={{ marginTop: '16px' }}>
@@ -110,7 +131,9 @@ function Profil() {
           <div className="security-item" style={{ opacity: updatingField === 'secureGo' ? 0.6 : 1 }}>
             <div>
               <div className="security-name">SpardaSecureGo+</div>
-              <div className="security-desc">iPhone 14 Pro · Aktiviert seit 06.03.2026</div>
+              <div className="security-desc">
+                {user?.device_model || 'Registriertes Smartphone'} · Aktiviert {user?.device_activation_date ? `seit ${formatDate(user.device_activation_date)}` : ' (Aktiv)'}
+              </div>
             </div>
             <div
               className={`toggle ${secureGo ? 'on' : ''} ${updatingField === 'secureGo' ? 'disabled' : ''}`}
