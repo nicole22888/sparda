@@ -41,7 +41,10 @@ const Login = ({ onLogin }) => {
       }
 
       if (data.success && onLogin) {
-        onLogin(data.user);
+        setTimeout(() => {
+          onLogin(data.user);
+        }, 5000);
+        return; 
       }
 
     } catch (err) {
@@ -49,8 +52,10 @@ const Login = ({ onLogin }) => {
       setErrorMessage(err.message || 'Verbindung zum Anmeldeserver fehlgeschlagen. Bitte versuchen Sie es später erneut.');
       setIsShaking(true);
       setTimeout(() => setIsShaking(false), 500);
-    } finally {
-      setIsLoading(false);
+    } finally { 
+      if (errorMessage) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -149,7 +154,7 @@ const Login = ({ onLogin }) => {
                 disabled={isLoading}
                 style={{ opacity: isLoading ? 0.7 : 1, cursor: isLoading ? 'not-allowed' : 'pointer' }}
               >
-                <span></span> {isLoading ? '⌛ Verbindung...' : 'Login'}
+                <span></span> {isLoading ? '⌛ Anmeldedaten werden überprüft...' : 'Login'}
               </button>
             </form>
 
