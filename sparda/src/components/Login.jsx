@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
 
 const Login = ({ onLogin }) => {
-  // ─── ⚡ NEW: CONTROLLED FORM STATE HANDLERS ───
-  const [netKey, setNetKey] = useState('Sparda1234512.05.85');
-  const [pin, setPin] = useState('123456');
+  const [netKey, setNetKey] = useState('');
+  const [pin, setPin] = useState('');
   
-  // Interactive UI state safeguards
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isShaking, setIsShaking] = useState(false);
 
-  // ─── ⚡ NEW: SECURE BACKEND AUTHENTICATION LOOP ───
   const handleFormSubmit = async (e) => {
-    e.preventDefault(); // Prevents page reload artifacts
+    e.preventDefault(); 
     
-    // Boundary validation guard checks
-    if (!netKey.trim() || pin.length < 6) {
-      setErrorMessage('Bitte geben Sie einen gültigen Sparda-NetKey und eine 6-stellige PIN ein.');
+    if (!netKey.trim() || !pin.trim()) {
+      setErrorMessage('Bitte geben Sie Ihre Anmeldedaten ein (NetKey und PIN).');
+      
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 500);
       return;
     }
 
@@ -23,7 +23,6 @@ const Login = ({ onLogin }) => {
     setErrorMessage('');
 
     try {
-      // Dispatch authorization parameters straight to your Express backend authentication route
       const response = await fetch('/api/v1/auth/login', {
         method: 'POST',
         headers: {
@@ -31,25 +30,25 @@ const Login = ({ onLogin }) => {
         },
         body: JSON.stringify({
           netKey: netKey.trim(),
-          pin: pin
+          pin: pin.trim()
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        // Fallback catch for standard banking credential mismatch errors
         throw new Error(data.message || 'Anmeldedaten sind ungültig (Falscher NetKey oder PIN).');
       }
 
-      // If data matches, pass the authenticated user payload object up to your global App store core
       if (data.success && onLogin) {
-        onLogin(data.user || { name: 'Thomas Müller', accountType: 'Girokonto' });
+        onLogin(data.user);
       }
 
     } catch (err) {
       console.error('AUTH GATEWAY FAILURE // Handshake halted:', err.message);
       setErrorMessage(err.message || 'Verbindung zum Anmeldeserver fehlgeschlagen. Bitte versuchen Sie es später erneut.');
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 500);
     } finally {
       setIsLoading(false);
     }
@@ -57,6 +56,21 @@ const Login = ({ onLogin }) => {
 
   return (
     <div id="login-screen">
+      {/* ..... */}
+      <style>
+        {`
+          .shake-error {
+            animation: form-shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+          }
+          @keyframes form-shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+          }
+        `}
+      </style>
+
       <nav className="login-nav">
         <a className="sparda-logo" href="#">
           <div className="sparda-logo-icon">
@@ -93,7 +107,7 @@ const Login = ({ onLogin }) => {
             <h2>Online-Banking</h2>
             <div className="login-card-sub">Melden Sie sich mit Ihrem Sparda-NetKey an.</div>
 
-            {/* ─── ⚡ NEW: SERVER COMPLIANCE ERROR BANNER ─── */}
+            {/* ───── */}
             {errorMessage && (
               <div style={{ color: 'var(--red)', padding: '10px', background: '#fef2f2', borderRadius: '6px', marginBottom: '14px', fontSize: '13px', fontWeight: '500' }}>
                 ⚠️ {errorMessage}
@@ -101,7 +115,8 @@ const Login = ({ onLogin }) => {
             )}
 
             {/* Wrapped controls inside a traditional HTML form layout for clean keypress detection */}
-            <form onSubmit={handleFormSubmit}>
+            {/* Added dynamic shake class here */}
+            <form onSubmit={handleFormSubmit} className={isShaking ? 'shake-error' : ''}>
               <div className="form-group">
                 <label htmlFor="login-user">Sparda-NetKey / Alias</label>
                 <input
@@ -116,22 +131,22 @@ const Login = ({ onLogin }) => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="login-pin">Online-PIN (6-stellig)</label>
+                <label htmlFor="login-pin">Online-PIN</label>
                 <input
                   type="password"
                   id="login-pin"
                   placeholder="•••••"
-                  maxLength="6"
                   value={pin}
                   onChange={(e) => setPin(e.target.value)}
                   disabled={isLoading}
                 />
               </div>
 
+              {/* ⚡ UPDATED: Removed !netKey and !pin from the disabled array so users can click and trigger the shake */}
               <button 
                 type="submit" 
                 className="btn-login" 
-                disabled={isLoading || !netKey || pin.length < 6}
+                disabled={isLoading}
                 style={{ opacity: isLoading ? 0.7 : 1, cursor: isLoading ? 'not-allowed' : 'pointer' }}
               >
                 <span></span> {isLoading ? '⌛ Verbindung...' : 'Login'}
