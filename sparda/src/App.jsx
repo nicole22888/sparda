@@ -10,6 +10,7 @@ import Sparkonto from './components/Sparkonto';
 import Postfach from './components/Postfach';
 import Karten from './components/Karten';
 import Profil from './components/Profil';
+import Header from './components/Header';
 
 import './components/Login.css';
 
@@ -20,7 +21,6 @@ function App() {
   const [isAuthenticating, setIsAuthenticating] = useState(true);
   const [currentPage, setCurrentPage] = useState('kontoübersicht');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
 
   useEffect(() => {
     const checkActiveSession = async () => {
@@ -53,7 +53,7 @@ function App() {
         setUnreadMailCount(data.count || 0);
       }
     } catch (err) {
-      console.error("SANTOS CORE ENGINE // Unread count fetch failure:", err);
+      console.error("Unread count fetch failure:", err);
     }
   };
 
@@ -93,26 +93,6 @@ function App() {
       setCurrentPage(destinationString);
     }
     setIsMobileMenuOpen(false);
-  };
-
-  // Helper formatting for dynamic user name display
-  const getUserDisplayName = () => {
-    if (!user || !user.name) return '';
-    return user.name;
-  };
-
-  const getUserInitials = () => {
-    if (!user || !user.name) return '';
-    const parts = user.name.trim().split(' ');
-    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  };
-
-  const getUserShortName = () => {
-    if (!user || !user.name) return '';
-    const parts = user.name.trim().split(' ');
-    if (parts.length === 1) return parts[0];
-    return `${parts[0][0]}. ${parts.slice(1).join(' ')}`;
   };
 
   const renderPage = () => {
@@ -156,86 +136,13 @@ function App() {
 
   return (
     <div id="app">
-      <header className="app-header">
-        <div className="app-header-logo">
-          <button 
-            className="mobile-menu-btn" 
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          >
-            ☰
-          </button>
-          <div className="logo-icon">
-            <svg viewBox="0 0 100 100">
-              <text
-                y=".9em"
-                fontSize="80"
-                fontFamily="serif"
-                fontWeight="bold"
-                fill="white"
-              >
-                S
-              </text>
-            </svg>
-          </div>
-
-          <span className="logo-label">
-            Sparda-<span>Bank</span>
-          </span>
-        </div>
-
-        <div className="app-header-main">
-          <div className="header-greeting">
-            Guten Tag, <strong>{getUserDisplayName()}</strong>
-          </div>
-
-          <div className="header-actions">
-            <button
-              className="header-btn mail-btn"
-              onClick={() => handlePageNavigation('postfach')}
-            >
-              📬 Postfach
-              {unreadMailCount > 0 && <span className="mail-badge">{unreadMailCount}</span>}
-            </button>
-
-            <button className="header-btn">
-              🔔
-            </button>
-
-            <div
-              className="header-user"
-              onClick={() => handlePageNavigation('profil')}
-            >
-              <div className="user-avatar">
-                {getUserInitials()}
-              </div>
-
-              <span className="user-name">
-                {getUserShortName()}
-              </span>
-
-              <span
-                style={{
-                  color: 'var(--gray-400)',
-                  fontSize: '10px'
-                }}
-              >
-                ▾
-              </span>
-            </div>
-            
-            <button
-              className="header-btn"
-              onClick={handleLogout}
-              style={{
-                borderColor: 'var(--red)',
-                color: 'var(--red)'
-              }}
-            >
-              ⏏ Abmelden
-            </button>
-          </div>
-        </div>
-      </header>
+      {/*  ─── */}
+      <Header 
+        user={user} 
+        goTo={handlePageNavigation} 
+        onLogout={handleLogout} 
+        toggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+      />
 
       <nav className={`app-sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-section">

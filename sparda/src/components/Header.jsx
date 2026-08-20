@@ -23,12 +23,22 @@ const Header = ({ user, goTo, onLogout }) => {
     return () => clearInterval(interval);
   }, []);
 
-  const firstName = user?.first_name || '';
-  const lastName = user?.last_name || '';
-  const fullName = `${firstName} ${lastName}`.trim();
+  // ─── ⚡ DYNAMIC NAME PARSER (ZERO HARDCODED FALLBACKS) ───
+  const fullName = user?.name || user?.full_name || `${user?.first_name || ''} ${user?.last_name || ''}`.trim();
   
-  const avatarInitials = `${firstName ? firstName.charAt(0) : ''}${lastName ? lastName.charAt(0) : ''}`.toUpperCase();
-  const shortName = firstName && lastName ? `${firstName.substring(0, 2)}. ${lastName}` : fullName;
+  const getAvatarInitials = () => {
+    if (!fullName) return '';
+    const parts = fullName.trim().split(' ');
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  const getShortName = () => {
+    if (!fullName) return '';
+    const parts = fullName.trim().split(' ');
+    if (parts.length === 1) return parts[0];
+    return `${parts[0][0]}. ${parts.slice(1).join(' ')}`;
+  };
 
   return (
     <header className="app-header">
@@ -55,8 +65,8 @@ const Header = ({ user, goTo, onLogout }) => {
           <button className="header-btn">🔔</button>
 
           <div className="header-user" onClick={() => goTo('profil')}>
-            <div className="user-avatar">{avatarInitials}</div>
-            <span className="user-name">{shortName}</span>
+            <div className="user-avatar">{getAvatarInitials()}</div>
+            <span className="user-name">{getShortName()}</span>
             <span style={{ color: 'var(--gray-400)', fontSize: '10px' }}>▾</span>
           </div>
 
