@@ -1,48 +1,77 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SecureGoModal from './SecureGoModal';
 
-function Ueberweisung({ goTo }) {
-  // ─── ⚡ NEW: CONTROLLED FORM STATE HANDLERS ───
+// ─── ⚡ DYNAMIC: ACCEPT INJECTED USER AND ACCOUNTS PROPS FROM DATABASE ───
+function Ueberweisung({ goTo, user, accounts = [] }) {
+  // Extract primary account or fallback safely to first item
+  const defaultAccount = accounts.length > 0 ? accounts[0] : null;
+
+  // ─── ⚡ DYNAMIC FORM STATE INITIALIZATION ───
+  const [selectedAccountId, setSelectedAccountId] = useState(defaultAccount?.id || '');
   const [recipientName, setRecipientName] = useState('');
   const [iban, setIban] = useState('');
   const [bic, setBic] = useState('');
   const [amount, setAmount] = useState('');
-  const [executionDate, setExecutionDate] = useState('2026-08-18'); // Updated default to sync with 2026 baseline
+  
+  // Dynamically default execution date to today's date (YYYY-MM-DD)
+  const [executionDate, setExecutionDate] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+  
   const [purpose, setPurpose] = useState('');
 
   // UI state managers for interactive simulation mechanics
   const [showSecureGo, setShowSecureGo] = useState(false);
-  const [code, setCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // ─── ⚡ NEW: SECURE BACKEND TRANSACTION LOOP ───
-  const handleConfirm = async () => {
-    if (code.length < 1) return; // Simple safeguard check
+  // Synchronize initial account selection when accounts prop updates asynchronously
+  useEffect(() => {
+    if (accounts.length > 0 && !selectedAccountId) {
+      setSelectedAccountId(accounts[0].id);
+    }
+  }, [accounts, selectedAccountId]);
+
+  // ─── ⚡ STRICT DATABASE BINDINGS ───
+  const firstName = user?.first_name || '';
+  const lastName = user?.last_name || '';
+  const fullName = `${firstName} ${lastName}`.trim().toUpperCase();
+
+  // Helper to dynamically format currency for option dropdowns
+  const formatCurrency = (val) => {
+    if (val === undefined || val === null) return '0,00 €';
+    return val.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  };
+
+  // ─── ⚡ SECURE BACKEND TRANSACTION LOOP ───
+  const handleConfirm = async (modalCode) => {
+    if (!modalCode || modalCode.trim().length < 1) return;
     
     setShowSecureGo(false);
     setIsSubmitting(true);
     setError('');
 
-    // Construct a unique tracking signature string for the simulated transaction ledger
+    // Construct a unique tracking signature string for the transaction ledger
     const simulatedTrackingNumber = 'SP-TX-' + Math.floor(100000 + Math.random() * 900000) + '-DE';
 
     try {
-      // 1. Dispatch form properties directly to your Express endpoint
+      // Dispatch form properties directly to Express API endpoint
       const response = await fetch('/api/v1/transfers', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/pdf' // Connects cleanly with binary stream expectations or standard JSON API routers
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           trackingNumber: simulatedTrackingNumber,
+          accountId: selectedAccountId,
           recipientName: recipientName,
           recipientIban: iban,
           recipientBic: bic,
           amount: parseFloat(amount),
           executionDate: executionDate,
           purpose: purpose,
-          senderName: "THOMAS MÜLLER"
+          senderName: fullName,
+          authCode: modalCode
         })
       });
 
@@ -50,11 +79,7 @@ function Ueberweisung({ goTo }) {
         throw new Error('Server returned an unprocessable status loop boundary entry.');
       }
 
-      // 2. Clear input state arrays after successful entry execution
-      setCode('');
-      
-      // 3. Chain reaction navigation trigger: Route the user to the Postfach/Viewer view
-      // We pass the tracking ID so your iframe controller can read from the service file instantly
+      // Chain reaction navigation trigger: Route user to the Postfach/Viewer view with tracking parameter
       goTo(`postfach?trackingNumber=${simulatedTrackingNumber}`);
 
     } catch (err) {
@@ -77,7 +102,7 @@ function Ueberweisung({ goTo }) {
           </div>
         </div>
 
-        {/* ─── ⚡ NEW: SERVER EXCEPTION ERROR BANNER ─── */}
+        {/* ─── ⚡ SERVER EXCEPTION ERROR BANNER ─── */}
         {error && (
           <div style={{ color: 'var(--red)', padding: '12px', background: '#fef2f2', borderRadius: '6px', marginBottom: '16px', fontSize: '14px' }}>
             ⚠️ {error}
@@ -106,10 +131,21 @@ function Ueberweisung({ goTo }) {
                 <label>
                   Konto
                 </label>
-                <select defaultValue="giro">
-                  <option value="giro">
-                    SpardaGiro Klassik · DE89 7009 0500 0012 3456 78 · 2.847,93 €
-                  </option>
+                {/* ⚡ DYNAMIC ACCOUNT DROPDOWN ─── */}
+                <select 
+                  value={selectedAccountId} 
+                  onChange={(e) => setSelectedAccountId(e.target.value)}
+                  disabled={isSubmitting}
+                >
+                  {accounts.length > 0 ? (
+                    accounts.map((acc) => (
+                      <option key={acc.id} value={acc.id}>
+                        {acc.name || 'Girokonto'} · {acc.iban || '—'} · {formatCurrency(acc.balance)}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="">Keine Konten verfügbar</option>
+                  )}
                 </select>
               </div>
             </div>
@@ -211,7 +247,7 @@ function Ueberweisung({ goTo }) {
                   Verwendungszweck
                 </label>
                 <textarea
-                  placeholder="z.B. Rechnung Nr. 2024-001 · max. 140 Zeichen"
+                  placeholder="z.B. Rechnung Nr. 2026-001 · max. 140 Zeichen"
                   value={purpose}
                   onChange={(e) => setPurpose(e.target.value)}
                   disabled={isSubmitting}
@@ -234,16 +270,15 @@ function Ueberweisung({ goTo }) {
           </div>
         </div>
       </section>
+
       <SecureGoModal
-    isOpen={showSecureGo}
-    onClose={() => {
-    setCode('');
-    setShowSecureGo(false);
-    }}
-    onConfirm={handleConfirm}
-    isSubmitting={isSubmitting}
-   />
-  </>
+        isOpen={showSecureGo}
+        onClose={() => setShowSecureGo(false)}
+        onConfirm={handleConfirm}
+        isSubmitting={isSubmitting}
+        user={user}
+      />
+    </>
   );
 }
 

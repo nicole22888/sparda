@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 
-function Sparkonto() {
-  // ─── ⚡ NEW: LIVE LEDGER STATE HANDLERS ───
-  const [balance, setBalance] = useState(15240.00); // Dynamic fallback default
+// ─── ⚡ DYNAMIC: ACCEPT INJECTED USER PROP FROM DATABASE ───
+function Sparkonto({ user }) {
+  // ─── ⚡ PURE DYNAMIC STATE: ZERO HARDCODED FALLBACKS ───
+  const [accountData, setAccountData] = useState({});
   const [interestHistory, setInterestHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -14,7 +15,7 @@ function Sparkonto() {
         const data = await response.json();
         
         if (data && data.success) {
-          setBalance(data.balance);
+          setAccountData(data.account || {});
           setInterestHistory(data.history || []);
         }
       } catch (err) {
@@ -27,11 +28,32 @@ function Sparkonto() {
     fetchSavingsAccountData();
   }, []);
 
+  // ─── ⚡ STRICT DATABASE BINDINGS ───
+  const accountName = accountData.accountName || 'Sparkonto';
+  const iban = accountData.iban || 'DE•• •••• •••• •••• •••• ••';
+  const balance = accountData.balance || 0;
+  
+  const interestRate = accountData.interestRate || '0,00 %';
+  const rateLabel = accountData.rateLabel || 'p.a. · variabel';
+  
+  const lastInterestDate = accountData.lastInterestDate || '-';
+  const lastInterestAmount = accountData.lastInterestAmount || 0;
+  
+  const interestMethod = accountData.interestMethod || '-';
+  const noticePeriod = accountData.noticePeriod || '-';
+  const depositProtection = accountData.depositProtection || '-';
+
+  // Helper to dynamically format currency
+  const formatCurrency = (amount) => {
+    if (amount === undefined || amount === null) return '0,00 €';
+    return amount.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  };
+
   return (
     <section className="page active" id="page-sparkonto">
       <div className="page-header">
-        <div className="page-title">SpardaSpar Flex</div>
-        <div className="page-subtitle">DE89 7009 0500 0012 3456 90</div>
+        <div className="page-title">{accountName}</div>
+        <div className="page-subtitle">{iban}</div>
       </div>
 
       {isLoading ? (
@@ -43,18 +65,18 @@ function Sparkonto() {
           <div className="spar-hero">
             <div>
               <div className="spar-balance-label">Aktuelles Guthaben</div>
-              {/* ⚡ FIXED: Linked to live dynamic balance variable with German currency formatting */}
+              {/* ⚡ PURE DYNAMIC: Linked to live dynamic balance variable */}
               <div className="spar-balance">
-                {balance.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €
+                {formatCurrency(balance)}
               </div>
               <div style={{ opacity: 0.7, fontSize: '13px' }}>
-                Zinsgutschrift: zuletzt 28.02.2026 · +31,75 €
+                Zinsgutschrift: zuletzt {lastInterestDate} · {lastInterestAmount > 0 ? '+' : ''}{formatCurrency(lastInterestAmount)}
               </div>
             </div>
 
             <div className="spar-rate">
-              <div className="spar-rate-value">2,50 %</div>
-              <div className="spar-rate-label">p.a. · variabel</div>
+              <div className="spar-rate-value">{interestRate}</div>
+              <div className="spar-rate-label">{rateLabel}</div>
             </div>
           </div>
 
@@ -65,10 +87,10 @@ function Sparkonto() {
               </div>
 
               <div className="card-body">
-                {/* ─── ⚡ NEW: DYNAMIC ROW RENDERING FROM THE SERVER SOURCE ─── */}
+                {/* ─── ⚡ DYNAMIC ROW RENDERING FROM THE SERVER SOURCE ─── */}
                 {interestHistory.length > 0 ? (
                   interestHistory.map((tx, idx) => (
-                    <div className="tx-item" key={idx}>
+                    <div className="tx-item" key={tx.id || idx}>
                       <div className={`tx-icon ${tx.type || 'income'}`}>
                         {tx.icon || '💸'}
                       </div>
@@ -81,53 +103,18 @@ function Sparkonto() {
                       <div className="tx-right">
                         <div className={`tx-amount ${tx.amount > 0 ? 'positive' : 'negative'}`}>
                           {tx.amount > 0 ? '+' : ''}
-                          {tx.amount.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €
+                          {formatCurrency(tx.amount)}
                         </div>
                         <div className="tx-date">
-                          {new Date(tx.date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                          {tx.date ? new Date(tx.date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}
                         </div>
                       </div>
                     </div>
                   ))
                 ) : (
-                  /* Fallback static layouts for testing prior to deep database population loops */
-                  <>
-                    <div className="tx-item">
-                      <div className="tx-icon income">💸</div>
-                      <div className="tx-info">
-                        <div className="tx-name">Zinsgutschrift</div>
-                        <div className="tx-detail">2,5 % p.a. · Feb 2026</div>
-                      </div>
-                      <div className="tx-right">
-                        <div className="tx-amount positive">+31,75 €</div>
-                        <div className="tx-date">28.02.2026</div>
-                      </div>
-                    </div>
-
-                    <div className="tx-item">
-                      <div className="tx-icon income">💸</div>
-                      <div className="tx-info">
-                        <div className="tx-name">Zinsgutschrift</div>
-                        <div className="tx-detail">2,5 % p.a. · Jan 2026</div>
-                      </div>
-                      <div className="tx-right">
-                        <div className="tx-amount positive">+29,88 €</div>
-                        <div className="tx-date">31.01.2026</div>
-                      </div>
-                    </div>
-
-                    <div className="tx-item">
-                      <div className="tx-icon transfer">🔁</div>
-                      <div className="tx-info">
-                        <div className="tx-name">Einzahlung vom Girokonto</div>
-                        <div className="tx-detail">Sparrate März</div>
-                      </div>
-                      <div className="tx-right">
-                        <div className="tx-amount positive">+500,00 €</div>
-                        <div className="tx-date">01.03.2026</div>
-                      </div>
-                    </div>
-                  </>
+                  <div style={{ padding: '20px', textAlign: 'center', color: 'var(--gray-500)', fontSize: '14px' }}>
+                    Keine Zinsumsätze vorhanden.
+                  </div>
                 )}
               </div>
             </div>
@@ -141,23 +128,23 @@ function Sparkonto() {
                 <div className="profil-row">
                   <span className="profil-key">Zinssatz</span>
                   <span className="profil-value" style={{ color: 'var(--green)' }}>
-                    2,50 % p.a.
+                    {interestRate}
                   </span>
                 </div>
 
                 <div className="profil-row">
                   <span className="profil-key">Zinsmethode</span>
-                  <span className="profil-value">Monatlich</span>
+                  <span className="profil-value">{interestMethod}</span>
                 </div>
 
                 <div className="profil-row">
                   <span className="profil-key">Kündigungsfrist</span>
-                  <span className="profil-value">3 Monate</span>
+                  <span className="profil-value">{noticePeriod}</span>
                 </div>
 
                 <div className="profil-row">
                   <span className="profil-key">Einlagensicherung</span>
-                  <span className="profil-value">100.000 € (gesetzl.)</span>
+                  <span className="profil-value">{depositProtection}</span>
                 </div>
               </div>
             </div>

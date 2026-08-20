@@ -1,39 +1,96 @@
 import React, { useState, useEffect } from 'react';
 
-function Dashboard({ goTo }) {
-
-  const [accountData, setAccountData] = useState({
+// ─── ⚡ DYNAMIC: ACCEPT INJECTED PROPS FROM DATABASE ───
+function Dashboard({ goTo, user, accounts = [] }) {
+  // ─── ⚡ PURE DYNAMIC STATE: ZERO HARDCODED FALLBACKS ───
+  const [dashboardData, setDashboardData] = useState({
     giroBalance: 0,
     sparBalance: 0,
     depotValue: 0,
-    recentTransactions: []
+    recentTransactions: [],
+    incomeMonth: 0,
+    expenseMonth: 0,
+    standingOrdersCount: 0,
+    nextStandingOrderDate: null,
+    categorySpending: {},
+    messages: []
   });
+  
   const [isLoading, setIsLoading] = useState(true);
+
+  // ─── ⚡ STRICT DATABASE BINDINGS ───
+  const lastLogin = user?.last_login || new Date().toLocaleString('de-DE');
+  const userIp = user?.ip_address || 'Unbekannt';
+  const userDevice = user?.device_name || 'Unbekannt';
+  
+  // Extract account details dynamically
+  const giroAccount = accounts.find(a => a.type === 'giro') || accounts[0] || {};
+  const sparAccount = accounts.find(a => a.type === 'spar') || accounts[1] || {};
+  const depotAccount = accounts.find(a => a.type === 'depot') || accounts[2] || {};
 
   useEffect(() => {
     const loadDashboardTruthMetrics = async () => {
       try {
         setIsLoading(true);
 
-        const [transfersRes, sparRes, depotRes] = await Promise.all([
-          fetch('/api/v1/transfers'),
-          fetch('/api/v1/sparkonto'),
-          fetch('/api/v1/depot')
+        // ⚡ Expanded API Promise array to capture all dashboard metrics dynamically
+        const [transfersRes, sparRes, depotRes, ordersRes, messagesRes] = await Promise.all([
+          fetch('/api/v1/transfers').catch(() => ({ json: () => ({}) })),
+          fetch('/api/v1/sparkonto').catch(() => ({ json: () => ({}) })),
+          fetch('/api/v1/depot').catch(() => ({ json: () => ({}) })),
+          fetch('/api/v1/dauerauftraege').catch(() => ({ json: () => ({}) })),
+          fetch('/api/v1/messages').catch(() => ({ json: () => ({}) }))
         ]);
 
-        const [transfersData, sparData, depotData] = await Promise.all([
+        const [transfersData, sparData, depotData, ordersData, messagesData] = await Promise.all([
           transfersRes.json(),
           sparRes.json(),
-          depotRes.json()
+          depotRes.json(),
+          ordersRes.json(),
+          messagesRes.json()
         ]);
 
-        setAccountData({
-          giroBalance: transfersData.transactions && transfersData.transactions.length > 0
-            ? 2847.93 + transfersData.transactions.reduce((sum, tx) => sum + Number(tx.amount), 0) - (-1455.37)
-            : 2847.93,
-          sparBalance: sparData.success ? sparData.balance : 15240.00,
-          depotValue: depotData.success ? depotData.depotValue : 38412.75,
-          recentTransactions: transfersData.success ? transfersData.transactions : []
+        const txList = transfersData.transactions || [];
+        
+        // ⚡ DYNAMIC MATH ENGINE: Calculate monthly income/expenses & categories
+        let income = 0;
+        let expense = 0;
+        const spending = { wohnen: 0, lebensmittel: 0, transport: 0, freizeit: 0, medien: 0, sonstiges: 0 };
+        
+        txList.forEach(tx => {
+          const amount = Number(tx.amount) || 0;
+          if (amount > 0) {
+            income += amount;
+          } else {
+            expense += Math.abs(amount);
+            // Dynamic category bucket sorting
+            const cat = (tx.category || 'sonstiges').toLowerCase();
+            if (spending[cat] !== undefined) {
+              spending[cat] += Math.abs(amount);
+            } else {
+              spending.sonstiges += Math.abs(amount);
+            }
+          }
+        });
+
+        // ⚡ DYNAMIC GIRO BALANCE CALCULATION
+        // Base balance from DB + sum of transaction history
+        const baseGiro = parseFloat(giroAccount.balance) || 0;
+        const calculatedGiro = txList.length > 0 
+          ? baseGiro + txList.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0)
+          : baseGiro;
+
+        setDashboardData({
+          giroBalance: calculatedGiro,
+          sparBalance: sparData.success ? parseFloat(sparData.balance) : (parseFloat(sparAccount.balance) || 0),
+          depotValue: depotData.success ? parseFloat(depotData.depotValue) : (parseFloat(depotAccount.balance) || 0),
+          recentTransactions: txList,
+          incomeMonth: income,
+          expenseMonth: expense,
+          standingOrdersCount: ordersData.orders ? ordersData.orders.length : 0,
+          nextStandingOrderDate: ordersData.nextExecutionDate || null,
+          categorySpending: spending,
+          messages: messagesData.messages || []
         });
       } catch (err) {
         console.error("Dashboard aggregation failure:", err);
@@ -43,10 +100,17 @@ function Dashboard({ goTo }) {
     };
 
     loadDashboardTruthMetrics();
-  }, []);
+  }, [giroAccount.balance, sparAccount.balance, depotAccount.balance]);
 
   // ─── COMBINED LIQUID FORTUNE CALCULATOR ───
-  const totalNetWorth = accountData.giroBalance + accountData.sparBalance + accountData.depotValue;
+  const totalNetWorth = dashboardData.giroBalance + dashboardData.sparBalance + dashboardData.depotValue;
+
+  // Formatting helpers
+  const formatCurrency = (val) => (val || 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  
+  // Dynamic Chart Height Calculator (Max 65px as per original design constraints)
+  const maxSpending = Math.max(...Object.values(dashboardData.categorySpending), 1); // prevent divide by zero
+  const getChartHeight = (value) => `${Math.max((value / maxSpending) * 65, 4)}px`;
 
   return (
     <section className="page active" id="page-kontoübersicht">
@@ -56,7 +120,7 @@ function Dashboard({ goTo }) {
         </div>
 
         <div className="page-subtitle">
-          Letzter Login: Heute, 09:14 Uhr · IP: 192.168.1.xxx · Gerät: Chrome/Windows
+          Letzter Login: {lastLogin} · IP: {userIp} · Gerät: {userDevice}
         </div>
       </div>
 
@@ -70,16 +134,16 @@ function Dashboard({ goTo }) {
           </div>
 
           <div className="account-card-name">
-            SpardaGiro Klassik
+            {giroAccount.name || 'SpardaGiro Klassik'}
           </div>
 
           <div className="account-card-iban">
-            DE89 7009 0500 0012 3456 78
+            {giroAccount.iban || '—'}
           </div>
 
           {/* ⚡ REACTIVE GIRO BALANCE */}
           <div className="account-card-balance">
-            {accountData.giroBalance.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+            {formatCurrency(dashboardData.giroBalance)} €
           </div>
 
           <div className="account-card-balance-label">
@@ -118,20 +182,20 @@ function Dashboard({ goTo }) {
           </div>
 
           <div className="account-card-name">
-            SpardaSpar Flex
+            {sparAccount.name || 'SpardaSpar Flex'}
           </div>
 
           <div className="account-card-iban">
-            DE89 7009 0500 0012 3456 90
+            {sparAccount.iban || '—'}
           </div>
 
           {/* ⚡ REACTIVE SPARBALANCE */}
           <div className="account-card-balance">
-            {accountData.sparBalance.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+            {formatCurrency(dashboardData.sparBalance)} €
           </div>
 
           <div className="account-card-balance-label">
-            Guthaben (2,5 % p.a.)
+            Guthaben
           </div>
 
           <div className="account-card-actions">
@@ -156,20 +220,20 @@ function Dashboard({ goTo }) {
           </div>
 
           <div className="account-card-name">
-            UnionDepot
+            {depotAccount.name || 'UnionDepot'}
           </div>
 
           <div className="account-card-iban">
-            Depot-Nr: 4821 0076 00
+            Depot-Nr: {depotAccount.depotNumber || depotAccount.iban || '—'}
           </div>
 
           {/* ⚡ REACTIVE DEPOT VALUE */}
           <div className="account-card-balance">
-            {accountData.depotValue.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+            {formatCurrency(dashboardData.depotValue)} €
           </div>
 
           <div className="account-card-balance-label">
-            Depotwert ▲ +4,8 % YTD
+            Depotwert
           </div>
 
           <div className="account-card-actions">
@@ -189,11 +253,11 @@ function Dashboard({ goTo }) {
       <div className="stats-row">
         <div className="stat-box">
           <div className="stat-box-label">
-            Einnahmen (März)
+            Einnahmen (Monat)
           </div>
 
           <div className="stat-box-value positive">
-            +3.400,00 €
+            +{formatCurrency(dashboardData.incomeMonth)} €
           </div>
 
           <div className="stat-box-sub">
@@ -203,11 +267,11 @@ function Dashboard({ goTo }) {
 
         <div className="stat-box">
           <div className="stat-box-label">
-            Ausgaben (März)
+            Ausgaben (Monat)
           </div>
 
           <div className="stat-box-value negative">
-            -1.847,22 €
+            -{formatCurrency(dashboardData.expenseMonth)} €
           </div>
 
           <div className="stat-box-sub">
@@ -222,7 +286,7 @@ function Dashboard({ goTo }) {
 
           {/* ⚡ DYNAMIC RUNTIME TOTAL FORTUNE */}
           <div className="stat-box-value">
-            {totalNetWorth.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+            {formatCurrency(totalNetWorth)} €
           </div>
 
           <div className="stat-box-sub">
@@ -236,11 +300,11 @@ function Dashboard({ goTo }) {
           </div>
 
           <div className="stat-box-value">
-            4 aktiv
+            {dashboardData.standingOrdersCount} aktiv
           </div>
 
           <div className="stat-box-sub">
-            Nächste am 15.03.
+            {dashboardData.nextStandingOrderDate ? `Nächste am ${dashboardData.nextStandingOrderDate}` : 'Keine anstehend'}
           </div>
         </div>
       </div>
@@ -250,7 +314,7 @@ function Dashboard({ goTo }) {
           <div className="card">
             <div className="card-header">
               <span className="card-title">
-                Letzte Umsätze · Girokonto
+                Letzte Umsätze · {giroAccount.name || 'Girokonto'}
               </span>
 
               <span
@@ -262,9 +326,9 @@ function Dashboard({ goTo }) {
             </div>
 
             <div className="card-body">
-              {/* ⚡ 5. DYNAMIC DATABASE PREVIEW STREAM LOOP */}
-              {accountData.recentTransactions.length > 0 ? (
-                accountData.recentTransactions.slice(0, 8).map((tx, idx) => {
+              {/* ⚡ DYNAMIC DATABASE PREVIEW STREAM LOOP */}
+              {dashboardData.recentTransactions.length > 0 ? (
+                dashboardData.recentTransactions.slice(0, 8).map((tx, idx) => {
                   const isPositive = Number(tx.amount) > 0;
                   const dateObj = new Date(tx.execution_date || tx.date || Date.now());
                   
@@ -287,7 +351,7 @@ function Dashboard({ goTo }) {
                       <div className="tx-right">
                         <div className={`tx-amount ${isPositive ? 'positive' : 'negative'}`}>
                           {isPositive ? '+' : ''}
-                          {Number(tx.amount).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                          {formatCurrency(Number(tx.amount))} €
                         </div>
 
                         <div className="tx-date">
@@ -298,7 +362,6 @@ function Dashboard({ goTo }) {
                   );
                 })
               ) : (
-                /* Fallback layout state if no transactions exist in db yet */
                 <div style={{ padding: '16px', textAlign: 'center', color: 'var(--gray-400)' }}>
                   Keine aktuellen Umsätze vorhanden.
                 </div>
@@ -312,95 +375,35 @@ function Dashboard({ goTo }) {
           >
             <div className="card-header">
               <span className="card-title">
-                Ausgaben nach Kategorien (Feb/Mär)
+                Ausgaben nach Kategorien (Monat)
               </span>
             </div>
 
             <div className="chart-area">
               <div className="bar-chart">
-                <div className="bar-item">
-                  <div
-                    className="bar"
-                    style={{
-                      height: '65px',
-                      background: 'var(--red)'
-                    }}
-                  ></div>
+                {/* ⚡ DYNAMIC CHART RENDERING ENGINE */}
+                {[
+                  { id: 'wohnen', label: 'Wohnen', color: 'var(--red)' },
+                  { id: 'lebensmittel', label: 'Lebensmittel', color: 'var(--gray-400)' },
+                  { id: 'transport', label: 'Transport', color: 'var(--blue)' },
+                  { id: 'freizeit', label: 'Freizeit', color: 'var(--green)' },
+                  { id: 'medien', label: 'Medien', color: '#f59e0b' },
+                  { id: 'sonstiges', label: 'Sonstiges', color: '#8b5cf6' }
+                ].map(cat => (
+                  <div className="bar-item" key={cat.id}>
+                    <div
+                      className="bar"
+                      style={{
+                        height: getChartHeight(dashboardData.categorySpending[cat.id]),
+                        background: cat.color
+                      }}
+                    ></div>
 
-                  <div className="bar-label">
-                    Wohnen
+                    <div className="bar-label">
+                      {cat.label}
+                    </div>
                   </div>
-                </div>
-
-                <div className="bar-item">
-                  <div
-                    className="bar"
-                    style={{
-                      height: '32px',
-                      background: 'var(--gray-400)'
-                    }}
-                  ></div>
-
-                  <div className="bar-label">
-                    Lebensmittel
-                  </div>
-                </div>
-
-                <div className="bar-item">
-                  <div
-                    className="bar"
-                    style={{
-                      height: '20px',
-                      background: 'var(--blue)'
-                    }}
-                  ></div>
-
-                  <div className="bar-label">
-                    Transport
-                  </div>
-                </div>
-
-                <div className="bar-item">
-                  <div
-                    className="bar"
-                    style={{
-                      height: '15px',
-                      background: 'var(--green)'
-                    }}
-                  ></div>
-
-                  <div className="bar-label">
-                    Freizeit
-                  </div>
-                </div>
-
-                <div className="bar-item">
-                  <div
-                    className="bar"
-                    style={{
-                      height: '12px',
-                      background: '#f59e0b'
-                    }}
-                  ></div>
-
-                  <div className="bar-label">
-                    Medien
-                  </div>
-                </div>
-
-                <div className="bar-item">
-                  <div
-                    className="bar"
-                    style={{
-                      height: '18px',
-                      background: '#8b5cf6'
-                    }}
-                  ></div>
-
-                  <div className="bar-label">
-                    Sonstiges
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           </div>
@@ -460,9 +463,10 @@ function Dashboard({ goTo }) {
                     Datum
                   </label>
 
+                  {/* ⚡ DYNAMIC DEFAULT DATE */}
                   <input
                     type="date"
-                    defaultValue="2026-03-09"
+                    defaultValue={new Date().toISOString().split('T')[0]}
                   />
                 </div>
               </div>
@@ -474,7 +478,7 @@ function Dashboard({ goTo }) {
 
                 <input
                   type="text"
-                  placeholder="z.B. Rechnung März"
+                  placeholder="z.B. Rechnung"
                 />
               </div>
 
@@ -502,65 +506,34 @@ function Dashboard({ goTo }) {
             </div>
 
             <div className="card-body">
-              <div className="mail-item unread">
-                <div className="mail-icon">
-                  📩
+              {/* ⚡ DYNAMIC MAILBOX STREAM */}
+              {dashboardData.messages.length > 0 ? (
+                dashboardData.messages.slice(0, 3).map((msg, idx) => (
+                  <div className={`mail-item ${msg.isUnread ? 'unread' : ''}`} key={msg.id || idx}>
+                    <div className="mail-icon">
+                      {msg.icon || '📩'}
+                    </div>
+
+                    <div>
+                      <div className="mail-subject">
+                        {msg.subject}
+                      </div>
+
+                      <div className="mail-preview">
+                        {msg.preview}
+                      </div>
+
+                      <div className="mail-date">
+                        {msg.date ? new Date(msg.date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--gray-400)' }}>
+                  Keine neuen Nachrichten.
                 </div>
-
-                <div>
-                  <div className="mail-subject">
-                    Kontoauszug Februar 2026
-                  </div>
-
-                  <div className="mail-preview">
-                    Ihr monatlicher Kontoauszug steht bereit...
-                  </div>
-
-                  <div className="mail-date">
-                    08.03.2026
-                  </div>
-                </div>
-              </div>
-
-              <div className="mail-item unread">
-                <div className="mail-icon">
-                  📩
-                </div>
-
-                <div>
-                  <div className="mail-subject">
-                    SpardaSecureGo+ aktiviert
-                  </div>
-
-                  <div className="mail-preview">
-                    Ihr neues Gerät wurde erfolgreich registriert...
-                  </div>
-
-                  <div className="mail-date">
-                    06.03.2026
-                  </div>
-                </div>
-              </div>
-
-              <div className="mail-item">
-                <div className="mail-icon">
-                  📧
-                </div>
-
-                <div>
-                  <div className="mail-subject">
-                    Wichtige Mitteilung zur VoP
-                  </div>
-
-                  <div className="mail-preview">
-                    Ab 9. Oktober automatische Empfängerprüfung...
-                  </div>
-
-                  <div className="mail-date">
-                    01.03.2026
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

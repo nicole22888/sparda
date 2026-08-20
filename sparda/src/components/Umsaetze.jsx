@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
 
-function Umsaetze({ goTo }) {
+// ─── ⚡ DYNAMIC: ACCEPT INJECTED ACCOUNTS PROP FROM DATABASE ───
+function Umsaetze({ goTo, accounts = [] }) {
   const [activeFilter, setActiveFilter] = useState('Alle');
   const [search, setSearch] = useState('');
   
   // ─── DETECT ACTIVE INCOMING TRANSACTION RECORDS ───
   const [transactions, setTransactions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // ─── ⚡ STRICT DATABASE BINDINGS: DYNAMIC ACCOUNT HEADERS ───
+  const defaultAccount = accounts.length > 0 ? accounts[0] : null;
+  const accountIban = defaultAccount?.iban || '—';
+  const accountName = defaultAccount?.name || 'Girokonto';
 
   useEffect(() => {
     const fetchLedgerHistory = async () => {
@@ -36,7 +42,7 @@ function Umsaetze({ goTo }) {
     'Lastschriften'
   ];
 
-  // ─── ⚡ NEW: TRANSLATE DATA OBJECTS DYNAMICALLY INTO THE GERMAN HIERARCHY ───
+  // ─── ⚡ TRANSLATE DATA OBJECTS DYNAMICALLY INTO THE GERMAN HIERARCHY ───
   // Processes raw database rows into structured monthly buckets reactively
   const groupedTransactions = transactions.reduce((acc, tx) => {
     const dateObj = new Date(tx.execution_date || tx.date);
@@ -90,10 +96,11 @@ function Umsaetze({ goTo }) {
     <section className="page active" id="page-umsätze">
       <div className="page-header">
         <div className="page-title">
-          Umsätze · Girokonto
+          Umsätze · {accountName}
         </div>
+        {/* ─── ⚡ NO HARDCODING: INJECTS REAL IBAN & ACCOUNT NAME ─── */}
         <div className="page-subtitle">
-          DE89 7009 0500 0012 3456 78 · SpardaGiro Klassik
+          {accountIban} · {accountName}
         </div>
       </div>
 
@@ -117,7 +124,7 @@ function Umsaetze({ goTo }) {
         />
       </div>
 
-      {/* ─── ⚡ NEW: SECURE LOADING SKELETON LAYER ─── */}
+      {/* ─── ⚡ SECURE LOADING SKELETON LAYER ─── */}
       {isLoading && (
         <div className="card" style={{ padding: '24px', textAlign: 'center', color: 'var(--gray-500)' }}>
           ⌛ Umsätze werden geladen...

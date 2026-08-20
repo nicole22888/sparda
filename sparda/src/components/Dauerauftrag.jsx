@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 
-function Dauerauftrag({ goTo }) {
-  // ─── ⚡ NEW: LIVE STANDING ORDERS STATE HANDLERS ───
+// ─── ⚡ DYNAMIC: ACCEPT INJECTED PROPS FROM DATABASE ───
+function Dauerauftrag({ goTo, user }) {
+  // ─── ⚡ PURE DYNAMIC STATE: ZERO HARDCODED FALLBACKS ───
   const [orders, setOrders] = useState([]);
+  const [nextExecutionDate, setNextExecutionDate] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -14,6 +16,7 @@ function Dauerauftrag({ goTo }) {
         
         if (data && data.success) {
           setOrders(data.orders || []);
+          setNextExecutionDate(data.nextExecutionDate || null);
         }
       } catch (err) {
         console.error("SANTOS CORE ENGINE // Standing orders query failure:", err);
@@ -25,13 +28,17 @@ function Dauerauftrag({ goTo }) {
     fetchStandingOrders();
   }, []);
 
+  // Helper formatting function
+  const formatCurrency = (val) => (val || 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
   return (
     <section className="page active" id="page-dauerauftrag">
       <div className="page-header">
         <div className="page-title">Daueraufträge</div>
-        {/* ⚡ FIXED: Dynamic subtitle counters adapting to your live database array lengths */}
+        {/* ⚡ STRICT DATABASE BINDINGS: DYNAMIC COUNT & EXECUTION DATE ─── */}
         <div className="page-subtitle">
-          {orders.length > 0 ? orders.length : '4'} aktive Daueraufträge · Nächste Ausführung: 15.03.2026
+          {orders.length} {orders.length === 1 ? 'aktiver Dauerauftrag' : 'aktive Daueraufträge'}
+          {nextExecutionDate ? ` · Nächste Ausführung: ${nextExecutionDate}` : ''}
         </div>
       </div>
 
@@ -47,25 +54,27 @@ function Dauerauftrag({ goTo }) {
         </div>
       ) : (
         <>
-          {/* ─── ⚡ NEW: DYNAMIC STANDING ORDERS RENDERING ENGINE ─── */}
+          {/* ─── ⚡ DYNAMIC STANDING ORDERS RENDERING ENGINE ─── */}
           {orders.length > 0 ? (
             orders.map((da, idx) => (
               <div className="dauerauftrag-item" key={da.id || idx}>
-                <div className="da-icon" style={{ background: da.bg_color || '#f0f4ff' }}>
+                <div className="da-icon" style={{ background: da.bg_color || da.bgColor || '#f0f4ff' }}>
                   {da.icon || '📋'}
                 </div>
 
                 <div className="da-info">
-                  <div className="da-name">{da.recipient_name}</div>
-                  <div className="da-iban">{da.recipient_iban}</div>
-                  <div className="da-schedule">{da.schedule_text}</div>
+                  <div className="da-name">{da.recipient_name || da.recipientName}</div>
+                  <div className="da-iban">{da.recipient_iban || da.recipientIban}</div>
+                  <div className="da-schedule">{da.schedule_text || da.scheduleText}</div>
                 </div>
 
                 <div>
                   <div className="da-amount">
-                    −{da.amount.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €
+                    −{formatCurrency(da.amount)} €
                   </div>
-                  <span className="tag tag-green">Aktiv</span>
+                  <span className={`tag ${da.statusClass || 'tag-green'}`}>
+                    {da.status || 'Aktiv'}
+                  </span>
                 </div>
 
                 <div className="da-actions">
@@ -75,76 +84,9 @@ function Dauerauftrag({ goTo }) {
               </div>
             ))
           ) : (
-            /* Fallback layout array structure to match your exact CSS tokens if db is clean */
-            <>
-              <div className="dauerauftrag-item">
-                <div className="da-icon" style={{ background: '#fff0f0' }}>🏠</div>
-                <div className="da-info">
-                  <div className="da-name">Hausverwaltung München GmbH</div>
-                  <div className="da-iban">DE12 7009 0500 9988 7766 55</div>
-                  <div className="da-schedule">Monatlich am 1. · Nächste: 01.04.2026 · Verwendungszweck: Miete April</div>
-                </div>
-                <div>
-                  <div className="da-amount">−950,00 €</div>
-                  <span className="tag tag-green">Aktiv</span>
-                </div>
-                <div className="da-actions">
-                  <button className="da-btn">✏️</button>
-                  <button className="da-btn">🗑️</button>
-                </div>
-              </div>
-
-              <div className="dauerauftrag-item">
-                <div className="da-icon" style={{ background: '#f0f4ff' }}>📱</div>
-                <div className="da-info">
-                  <div className="da-name">Telekom Deutschland GmbH</div>
-                  <div className="da-iban">DE84 1001 0010 0556 7788 00</div>
-                  <div className="da-schedule">Monatlich am 1. · Nächste: 01.04.2026 · Verwendungszweck: Kd.-Nr. 4728812</div>
-                </div>
-                <div>
-                  <div className="da-amount">−39,95 €</div>
-                  <span className="tag tag-green">Aktiv</span>
-                </div>
-                <div className="da-actions">
-                  <button className="da-btn">✏️</button>
-                  <button className="da-btn">🗑️</button>
-                </div>
-              </div>
-
-              <div className="dauerauftrag-item">
-                <div className="da-icon" style={{ background: '#f0fff4' }}>💰</div>
-                <div className="da-info">
-                  <div className="da-name">SpardaSpar Flex · Sparplan</div>
-                  <div className="da-iban">DE89 7009 0500 0012 3456 90 (eigenes Konto)</div>
-                  <div className="da-schedule">Monatlich am 15. · Nächste: 15.03.2026 · Verwendungszweck: Sparrate</div>
-                </div>
-                <div>
-                  <div className="da-amount">−500,00 €</div>
-                  <span className="tag tag-green">Aktiv</span>
-                </div>
-                <div className="da-actions">
-                  <button className="da-btn">✏️</button>
-                  <button className="da-btn">🗑️</button>
-                </div>
-              </div>
-
-              <div className="dauerauftrag-item">
-                <div className="da-icon" style={{ background: '#fffbf0' }}>💡</div>
-                <div className="da-info">
-                  <div className="da-name">E.ON Energie Deutschland · Abschlag</div>
-                  <div className="da-iban">DE56 2004 1133 0236 4543 00</div>
-                  <div className="da-schedule">Monatlich am 28. · Nächste: 28.03.2026 · Strom und Gas</div>
-                </div>
-                <div>
-                  <div className="da-amount">−87,00 €</div>
-                  <span className="tag tag-green">Aktiv</span>
-                </div>
-                <div className="da-actions">
-                  <button className="da-btn">✏️</button>
-                  <button className="da-btn">🗑️</button>
-                </div>
-              </div>
-            </>
+            <div className="card" style={{ padding: '40px', textAlign: 'center', color: 'var(--gray-500)' }}>
+              Keine aktiven Daueraufträge vorhanden.
+            </div>
           )}
         </>
       )}

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 
-function Depot({ goTo }) {
-  // ─── ⚡ NEW: LIVE PORTFOLIO STATE HANDLERS ───
-  const [depotValue, setDepotValue] = useState(38412.75);
-  const [costBasis, setCostBasis] = useState(36600.00);
+// ─── ⚡ DYNAMIC: ACCEPT INJECTED PROPS FROM DATABASE ───
+function Depot({ goTo, user }) {
+  // ─── ⚡ PURE DYNAMIC STATE: ZERO HARDCODED FALLBACKS ───
+  const [depotData, setDepotData] = useState({});
+  const [depotValue, setDepotValue] = useState(0);
+  const [costBasis, setCostBasis] = useState(0);
   const [positions, setPositions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -15,8 +17,9 @@ function Depot({ goTo }) {
         const data = await response.json();
         
         if (data && data.success) {
-          setDepotValue(data.depotValue);
-          setCostBasis(data.costBasis);
+          setDepotData(data.account || {});
+          setDepotValue(data.depotValue || 0);
+          setCostBasis(data.costBasis || 0);
           setPositions(data.positions || []);
         }
       } catch (err) {
@@ -29,16 +32,27 @@ function Depot({ goTo }) {
     fetchDepotData();
   }, []);
 
-  // ─── ⚡ NEW: DYNAMIC PERFORMANCE MATH ENGINE ───
+  // ─── ⚡ STRICT DATABASE BINDINGS ───
+  const depotNumber = depotData.depotNumber || '—';
+  const custodyType = depotData.custodyType || 'Inlandsverwahrung';
+
+  // ─── ⚡ DYNAMIC PERFORMANCE MATH ENGINE ───
   const totalReturn = depotValue - costBasis;
   const isReturnPositive = totalReturn >= 0;
   const performanceYTD = costBasis > 0 ? (totalReturn / costBasis) * 100 : 0.00;
+
+  // Helper formatting functions
+  const formatCurrency = (val) => (val || 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatPercent = (val) => (val || 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatShares = (val) => (val || 0).toLocaleString('de-DE', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 
   return (
     <section className="page active" id="page-depot">
       <div className="page-header">
         <div className="page-title">UnionDepot</div>
-        <div className="page-subtitle">Depot-Nr: 4821 0076 00 · Verwahrart: Inlandsverwahrung · Stand: {new Date().toLocaleDateString('de-DE')}</div>
+        <div className="page-subtitle">
+          Depot-Nr: {depotNumber} · Verwahrart: {custodyType} · Stand: {new Date().toLocaleDateString('de-DE')}
+        </div>
       </div>
 
       {isLoading ? (
@@ -51,29 +65,29 @@ function Depot({ goTo }) {
             <div className="depot-stat">
               <div className="depot-stat-label">Depotwert gesamt</div>
               <div className="depot-stat-value">
-                {depotValue.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €
+                {formatCurrency(depotValue)} €
               </div>
             </div>
 
             <div className="depot-stat">
               <div className="depot-stat-label">Einstandswert</div>
               <div className="depot-stat-value">
-                {costBasis.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €
+                {formatCurrency(costBasis)} €
               </div>
             </div>
 
             <div className="depot-stat">
               <div className="depot-stat-label">Gesamtertrag</div>
-              {/* ⚡ FIXED: Real-time mathematical calculation with dynamic color tracking */}
+              {/* ⚡ Real-time mathematical calculation with dynamic color tracking */}
               <div className="depot-stat-value" style={{ color: isReturnPositive ? 'var(--green)' : 'var(--red)' }}>
-                {isReturnPositive ? '+' : ''}{totalReturn.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €
+                {isReturnPositive ? '+' : ''}{formatCurrency(totalReturn)} €
               </div>
             </div>
 
             <div className="depot-stat">
               <div className="depot-stat-label">Performance YTD</div>
               <div className="depot-stat-value" style={{ color: performanceYTD >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                {performanceYTD >= 0 ? '+' : ''}{performanceYTD.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %
+                {performanceYTD >= 0 ? '+' : ''}{formatPercent(performanceYTD)} %
               </div>
             </div>
           </div>
@@ -85,12 +99,12 @@ function Depot({ goTo }) {
             </div>
 
             <div className="card-body">
-              {/* ─── ⚡ NEW: DYNAMIC INVESTMENTS RENDERING LOOP ─── */}
+              {/* ─── ⚡ DYNAMIC INVESTMENTS RENDERING LOOP ─── */}
               {positions.length > 0 ? (
                 positions.map((fund, idx) => {
-                  const isFundUp = fund.performance >= 0;
+                  const isFundUp = (fund.performance || 0) >= 0;
                   return (
-                    <div className="fund-item" key={idx}>
+                    <div className="fund-item" key={fund.id || idx}>
                       <div className="fund-icon">{fund.icon || '🌍'}</div>
 
                       <div>
@@ -99,73 +113,22 @@ function Depot({ goTo }) {
                       </div>
 
                       <div className="fund-shares">
-                        {fund.shares.toLocaleString('de-DE', { minimumFractionDigits: 3 })} Anteile {fund.sparplanInfo ? `· ${fund.sparplanInfo}` : ''}
+                        {formatShares(fund.shares)} Anteile {fund.sparplanInfo ? `· ${fund.sparplanInfo}` : ''}
                       </div>
 
                       <div className="fund-value">
-                        <div className="fund-price">{fund.value.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</div>
+                        <div className="fund-price">{formatCurrency(fund.value)} €</div>
                         <div className={`fund-perf ${isFundUp ? 'up' : 'down'}`}>
-                          {isFundUp ? '▲' : '▼'} {isFundUp ? '+' : ''}{fund.performance.toLocaleString('de-DE', { minimumFractionDigits: 2 })} %
+                          {isFundUp ? '▲' : '▼'} {isFundUp ? '+' : ''}{formatPercent(fund.performance)} %
                         </div>
                       </div>
                     </div>
                   );
                 })
               ) : (
-                /* Fallback layout array structure to match your exact CSS tokens if db is clean */
-                <>
-                  <div className="fund-item">
-                    <div className="fund-icon">🌍</div>
-                    <div>
-                      <div className="fund-name">UniGlobal net</div>
-                      <div className="fund-isin">ISIN: DE0008491051</div>
-                    </div>
-                    <div className="fund-shares">12,500 Anteile · Sparplan 100 €/Monat</div>
-                    <div className="fund-value">
-                      <div className="fund-price">21.480,00 €</div>
-                      <div className="fund-perf up">▲ +5,82 %</div>
-                    </div>
-                  </div>
-
-                  <div className="fund-item">
-                    <div className="fund-icon">🇪🇺</div>
-                    <div>
-                      <div className="fund-name">UniEuropa net</div>
-                      <div className="fund-isin">ISIN: DE0008491069</div>
-                    </div>
-                    <div className="fund-shares">8,750 Anteile · Sparplan 50 €/Monat</div>
-                    <div className="fund-value">
-                      <div className="fund-price">9.187,50 €</div>
-                      <div className="fund-perf up">▲ +3,20 %</div>
-                    </div>
-                  </div>
-
-                  <div className="fund-item">
-                    <div className="fund-icon">⚖️</div>
-                    <div>
-                      <div className="fund-name">UniRak Nachhaltig A</div>
-                      <div className="fund-isin">ISIN: DE0008491028</div>
-                    </div>
-                    <div className="fund-shares">5,200 Anteile</div>
-                    <div className="fund-value">
-                      <div className="fund-price">5.460,00 €</div>
-                      <div className="fund-perf down">▼ −0,80 %</div>
-                    </div>
-                  </div>
-
-                  <div className="fund-item">
-                    <div className="fund-icon">🏦</div>
-                    <div>
-                      <div className="fund-name">UniOptima</div>
-                      <div className="fund-isin">ISIN: DE0008491077</div>
-                    </div>
-                    <div className="fund-shares">2,315 Anteile</div>
-                    <div className="fund-value">
-                      <div className="fund-price">2.285,25 €</div>
-                      <div className="fund-perf up">▲ +1,44 %</div>
-                    </div>
-                  </div>
-                </>
+                <div style={{ padding: '20px', textAlign: 'center', color: 'var(--gray-500)', fontSize: '14px' }}>
+                  Keine Positionen im Depot vorhanden.
+                </div>
               )}
             </div>
           </div>

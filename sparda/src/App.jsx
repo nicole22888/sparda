@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -14,25 +14,71 @@ import Profil from './components/Profil';
 import './components/Login.css';
 
 function App() {
-
-  const [user, setUser] = useState(null); // Boot up locked until backend validates session token
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const [currentPage, setCurrentPage] = useState('kontoübersicht'); // Tracks your page navigation
+  const [user, setUser] = useState(null);
+  const [accounts, setAccounts] = useState([]);
+  const [unreadMailCount, setUnreadMailCount] = useState(0);
+  const [isAuthenticating, setIsAuthenticating] = useState(true);
+  const [currentPage, setCurrentPage] = useState('kontoübersicht');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
 
-  const handleLoginSuccess = (authenticatedUser) => {
+  useEffect(() => {
+    const checkActiveSession = async () => {
+      try {
+        const res = await fetch('/api/v1/auth/');
+        const data = await res.json();
 
-    setUser(authenticatedUser);
-    
-    window.history.replaceState({}, document.title, window.location.pathname);
-    
-    setCurrentPage('kontoübersicht');
+        if (data && data.success && data.user) {
+          setUser(data.user);
+          if (data.accounts) setAccounts(data.accounts);
+          
+          // Fetch dynamic notification / message counter
+          fetchUnreadCount();
+        }
+      } catch (err) {
+        console.error("SANTOS CORE ENGINE // Session verification error:", err);
+      } finally {
+        setIsAuthenticating(false);
+      }
+    };
+
+    checkActiveSession();
+  }, []);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await fetch('/api/v1/messages/unread-count');
+      const data = await res.json();
+      if (data && data.success) {
+        setUnreadMailCount(data.count || 0);
+      }
+    } catch (err) {
+      console.error("SANTOS CORE ENGINE // Unread count fetch failure:", err);
+    }
   };
 
-  const handleLogout = () => {
-    setUser(null);
+  const handleLoginSuccess = (authenticatedUser, userAccounts = []) => {
+    setUser(authenticatedUser);
+    if (userAccounts.length > 0) {
+      setAccounts(userAccounts);
+    }
+    
+    window.history.replaceState({}, document.title, window.location.pathname);
     setCurrentPage('kontoübersicht');
+    fetchUnreadCount();
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/v1/auth/logout', { method: 'POST' });
+    } catch (err) {
+      console.error("Logout request error:", err);
+    } finally {
+      setUser(null);
+      setAccounts([]);
+      setUnreadMailCount(0);
+      setCurrentPage('kontoübersicht');
+    }
   };
 
   const handlePageNavigation = (destinationString) => {
@@ -49,30 +95,60 @@ function App() {
     setIsMobileMenuOpen(false);
   };
 
+  // Helper formatting for dynamic user name display
+  const getUserDisplayName = () => {
+    if (!user || !user.name) return '';
+    return user.name;
+  };
+
+  const getUserInitials = () => {
+    if (!user || !user.name) return '';
+    const parts = user.name.trim().split(' ');
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  const getUserShortName = () => {
+    if (!user || !user.name) return '';
+    const parts = user.name.trim().split(' ');
+    if (parts.length === 1) return parts[0];
+    return `${parts[0][0]}. ${parts.slice(1).join(' ')}`;
+  };
+
   const renderPage = () => {
     switch (currentPage) {
       case 'kontoübersicht':
-        return <Dashboard goTo={handlePageNavigation} />;
+        return <Dashboard goTo={handlePageNavigation} user={user} accounts={accounts} />;
       case 'umsätze':
-        return <Umsaetze goTo={handlePageNavigation} />;
+        return <Umsaetze goTo={handlePageNavigation} user={user} accounts={accounts} />;
       case 'überweisung':
-        return <Ueberweisung goTo={handlePageNavigation} />;
+        return <Ueberweisung goTo={handlePageNavigation} user={user} accounts={accounts} />;
       case 'dauerauftrag':
-        return <Dauerauftrag goTo={handlePageNavigation} />;
+        return <Dauerauftrag goTo={handlePageNavigation} user={user} />;
       case 'depot':
-        return <Depot goTo={handlePageNavigation} />;
+        return <Depot goTo={handlePageNavigation} user={user} accounts={accounts} />;
       case 'sparkonto':
-        return <Sparkonto goTo={handlePageNavigation} />;
+        return <Sparkonto goTo={handlePageNavigation} user={user} accounts={accounts} />;
       case 'postfach':
-        return <Postfach goTo={handlePageNavigation} />;
+        return <Postfach goTo={handlePageNavigation} user={user} onReadStateChange={fetchUnreadCount} />;
       case 'karten':
-        return <Karten goTo={handlePageNavigation} />;
+        return <Karten goTo={handlePageNavigation} user={user} />;
       case 'profil':
-        return <Profil goTo={handlePageNavigation} />;
+        return <Profil goTo={handlePageNavigation} user={user} setUser={setUser} />;
       default:
-        return <Dashboard goTo={handlePageNavigation} />;
+        return <Dashboard goTo={handlePageNavigation} user={user} accounts={accounts} />;
     }
   };
+
+  if (isAuthenticating) {
+    return (
+      <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: 'var(--bg-main, #f4f6f9)' }}>
+        <div style={{ textAlign: 'center', color: 'var(--gray-600, #666)' }}>
+          ⌛ Sitzung wird überprüft...
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return <Login onLogin={handleLoginSuccess} />;
@@ -109,7 +185,7 @@ function App() {
 
         <div className="app-header-main">
           <div className="header-greeting">
-            Guten Tag, <strong>{user?.name || 'Thomas Müller'}</strong>
+            Guten Tag, <strong>{getUserDisplayName()}</strong>
           </div>
 
           <div className="header-actions">
@@ -118,7 +194,7 @@ function App() {
               onClick={() => handlePageNavigation('postfach')}
             >
               📬 Postfach
-              <span className="mail-badge">3</span>
+              {unreadMailCount > 0 && <span className="mail-badge">{unreadMailCount}</span>}
             </button>
 
             <button className="header-btn">
@@ -130,11 +206,11 @@ function App() {
               onClick={() => handlePageNavigation('profil')}
             >
               <div className="user-avatar">
-                {user?.name ? user.name.split(' ').map(n => n[0]).join('').substring(0, 2) : 'TM'}
+                {getUserInitials()}
               </div>
 
               <span className="user-name">
-                {user?.name ? user.name.split(' ')[0][0] + '. ' + user.name.split(' ').slice(1).join(' ') : 'Th. Müller'}
+                {getUserShortName()}
               </span>
 
               <span
@@ -245,7 +321,7 @@ function App() {
           >
             <span className="sidebar-item-icon">📬</span>
             Postfach
-            <span className="sidebar-item-badge">3</span>
+            {unreadMailCount > 0 && <span className="sidebar-item-badge">{unreadMailCount}</span>}
           </button>
 
           <button
