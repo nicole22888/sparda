@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 
-// ─── ⚡ DYNAMIC: ACCEPT INJECTED USER PROP FROM THE DATABASE ───
+// ─── DYNAMIC: ACCEPT INJECTED USER PROP FROM THE DATABASE ───
 function SecureGoModal({ isOpen, onClose, onConfirm, isSubmitting = false, user }) {
   const [code, setCode] = useState('');
 
   if (!isOpen) return null;
 
   const confirmTransfer = () => {
-    // ⚡ SEPARATION OF CONCERNS: Pass the collected PIN up to the file executing the database save
+    //SEPARATION OF CONCERNS: Pass the collected PIN up to the file executing the database save
     if (code.trim().length >= 1 && onConfirm) {
       onConfirm(code);
     }
