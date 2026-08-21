@@ -4,7 +4,6 @@ const bcrypt = require('bcrypt');
 const pool = require('../../db.cjs');
 const { generateOfficialKontoauszugStream } = require('./kontoauszug.generator.cjs');
 
-// Target user netkey matching Jareed Lacosta
 const TARGET_USER_NETKEY = 'Jareed Lacosta';
 
 /**
@@ -14,7 +13,7 @@ const TARGET_USER_NETKEY = 'Jareed Lacosta';
 const getActiveUserId = async () => {
   const result = await pool.query('SELECT id FROM users WHERE netkey ILIKE $1 LIMIT 1', [TARGET_USER_NETKEY]);
   if (result.rows.length === 0) throw new Error('User registry entry missing inside database.');
-  return result.rows[0].id; // Returns UUID string
+  return result.rows[0].id;
 };
 // =========================================================================
 // 1. AUTHENTICATION ENDPOINT (Called by Login.jsx)
@@ -27,7 +26,7 @@ if (!netKey || !pin) {
 return res.status(400).json({ success: false, message: 'NetKey und PIN sind erforderlich.' });
 }
 
-// ─── ⚡ UPDATED: JOIN USERS AND SECURITY_PROFILES ───
+// ─── JOIN USERS AND SECURITY_PROFILES ───
 const result = await pool.query(
 `SELECT 
 u.*, 
@@ -54,7 +53,7 @@ if (!match) {
 return res.status(401).json({ success: false, message: 'Anmeldedaten sind ungültig (Falscher NetKey oder PIN).' });
 }
 
-// ─── ⚡ UPDATED: SEND ALL PROFILE AND SECURITY FIELDS TO FRONTEND ───
+// ─── SEND ALL PROFILE AND SECURITY FIELDS ───
 return res.status(200).json({
 success: true,
 message: 'Erfolgreich angemeldet.',
@@ -88,9 +87,9 @@ next(err);
 }
 });
 
-// =========================================================================
+// ========================================================
 // 2. DASHBOARD BALANCES ENDPOINT (Called by Dashboard.jsx)
-// =========================================================================
+// ========================================================
 router.get('/balances', async (req, res, next) => {
   try {
     const userId = await getActiveUserId();
@@ -153,9 +152,8 @@ router.post('/transfers', async (req, res, next) => {
     }
 
     const user = userQuery.rows[0];
-    const userId = user.id; // Guaranteed UUID
+    const userId = user.id;
 
-    // SECURITY VAULT LOCK: 5 or more transfers trigger lock
     if (user.transfer_count >= 5) {
       return res.status(403).json({
         success: false,
