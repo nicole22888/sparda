@@ -32,12 +32,14 @@ const Header = ({ user, goTo, onLogout }) => {
     if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
-
-  const getShortName = () => {
-    if (!fullName) return '';
-    const parts = fullName.trim().split(' ');
-    if (parts.length === 1) return parts[0];
-    return `${parts[0][0]}. ${parts.slice(1).join(' ')}`;
+const getShortName = () => {
+  if (!fullName) return '';
+  const parts = fullName.trim().split(' ');
+  if (parts.length === 1) return parts[0];
+  const firstInitial = parts[0].endsWith('.')
+  ? parts[0]
+  : `${parts[0][0]}.`;
+  return `${firstInitial} ${parts.slice(1).join(' ')}`;
   };
 
   return (
