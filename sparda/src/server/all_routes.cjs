@@ -411,7 +411,27 @@ router.get('/dauerauftraege', async (req, res, next) => {
     next(err);
   }
 });
+// =============================
+// (Called by Postfach.jsx on component mount)
+// =============================
+router.get('/user/messages', async (req, res, next) => {
+try {
+const userId = await getActiveUserId();
 
+// Fetch all messages for the user, newest first
+const result = await pool.query(
+`SELECT id, subject, preview, body, sender, is_unread, date
+FROM messages
+WHERE user_id = $1
+ORDER BY created_at DESC`,
+[userId]
+);
+
+return res.status(200).json({ success: true, messages: result.rows });
+} catch (err) {
+next(err);
+}
+});
 // =========================
 // (Called by Postfach.jsx)
 // =========================
