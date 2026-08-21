@@ -1,29 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 
-const Header = ({ user, goTo, onLogout }) => {
-  const [unreadCount, setUnreadCount] = useState(0); 
+const Header = ({ user, goTo, onLogout, unreadCount }) => {
 
-  useEffect(() => {
-    const fetchHeaderNotificationMetrics = async () => {
-      try {
-        const response = await fetch('/api/v1/user/notifications/summary');
-        const data = await response.json();
-        
-        if (data && typeof data.unreadMails === 'number') {
-          setUnreadCount(data.unreadMails);
-        }
-      } catch (err) {
-        console.error("Header metadata sync failed:", err);
-      }
-    };
-
-    fetchHeaderNotificationMetrics();
-    
-    const interval = setInterval(fetchHeaderNotificationMetrics, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // ─── ⚡ DYNAMIC NAME PARSER (ZERO HARDCODED FALLBACKS) ───
   const fullName = user?.name || user?.full_name || `${user?.first_name || ''} ${user?.last_name || ''}`.trim();
   
   const getAvatarInitials = () => {
@@ -32,14 +10,19 @@ const Header = ({ user, goTo, onLogout }) => {
     if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
-const getShortName = () => {
-  if (!fullName) return '';
-  const parts = fullName.trim().split(' ');
-  if (parts.length === 1) return parts[0];
-  const firstInitial = parts[0].endsWith('.')
-  ? parts[0]
-  : `${parts[0][0]}.`;
-  return `${firstInitial} ${parts.slice(1).join(' ')}`;
+
+  const getShortName = () => {
+    if (!fullName) return '';
+
+    const parts = fullName.trim().split(' ');
+
+    if (parts.length === 1) return parts[0];
+
+    const firstInitial = parts[0].endsWith('.')
+      ? parts[0]
+      : `${parts[0][0]}.`;
+
+    return `${firstInitial} ${parts.slice(1).join(' ')}`;
   };
 
   return (

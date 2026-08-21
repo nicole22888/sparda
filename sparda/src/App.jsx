@@ -44,17 +44,16 @@ function App() {
 
     checkActiveSession();
   }, []);
-
-  const fetchUnreadCount = async () => {
-    try {
-      const res = await fetch('/api/v1/messages/unread-count');
-      const data = await res.json();
-      if (data && data.success) {
-        setUnreadMailCount(data.count || 0);
-      }
-    } catch (err) {
-      console.error("Unread count fetch failure:", err);
-    }
+const fetchUnreadCount = async () => {
+  try {
+  const res = await fetch('/api/v1/user/notifications/summary');
+  const data = await res.json();
+  if (data && data.success) {
+  setUnreadMailCount(data.unreadMails || 0);
+  }
+  } catch (err) {
+  console.error("Unread count fetch failure:", err);
+  }
   };
 
   const handleLoginSuccess = (authenticatedUser, userAccounts = []) => {
@@ -136,13 +135,14 @@ function App() {
 
   return (
     <div id="app">
-      {/*  ─── */}
-      <Header 
-        user={user} 
-        goTo={handlePageNavigation} 
-        onLogout={handleLogout} 
-        toggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-      />
+{/*  ─── */}
+<Header
+user={user}
+goTo={handlePageNavigation}
+onLogout={handleLogout}
+toggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+unreadCount={unreadMailCount}
+/>
 
       <nav className={`app-sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-section">
