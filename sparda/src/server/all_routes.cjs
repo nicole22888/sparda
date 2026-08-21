@@ -269,101 +269,126 @@ router.get('/transfers', async (req, res, next) => {
     next(err);
   }
 });
-
-// =========================
-// (Called by Sparkonto.jsx)
-// =========================
+// ============================
+// SPARKONTO (SAVINGS) ENDPOINT
+// ============================
 router.get('/sparkonto', async (req, res, next) => {
-  try {
-    const userId = await getActiveUserId();
+try {
+const userId = await getActiveUserId();
 
-    const balanceResult = await pool.query('SELECT spar_balance FROM balances WHERE user_id = $1 LIMIT 1', [userId]);
-    const historyResult = await pool.query('SELECT name, detail, amount, date, type, icon FROM savings_history WHERE user_id = $1 ORDER BY date DESC', [userId]);
+const balanceResult = await pool.query('SELECT spar_balance FROM balances WHERE user_id = $1 LIMIT 1', [userId]);
+const historyResult = await pool.query('SELECT name, detail, amount, date, type, icon FROM savings_history WHERE user_id = $1 ORDER BY date DESC', [userId]);
 
-    return res.status(200).json({
-      success: true,
-      balance: balanceResult.rows.length ? parseFloat(balanceResult.rows[0].spar_balance) : 0, 
-      history: historyResult.rows
-    });
-  } catch (err) {
-    next(err);
-  }
+const sparBalance = balanceResult.rows.length ? parseFloat(balanceResult.rows[0].spar_balance) : 0;
+
+return res.status(200).json({
+success: true,
+account: {
+accountName: 'SpardaSpar Extra',
+iban: 'DE89 5009 0500 0012 3456 99',
+balance: sparBalance,
+interestRate: '2,50 %',
+rateLabel: 'p.a. · variabel',
+lastInterestDate: '31.12.2025',
+lastInterestAmount: 184.50,
+interestMethod: 'act/360',
+noticePeriod: '3 Monate',
+depositProtection: 'BVR-Institutssicherung'
+},
+history: historyResult.rows.map(row => ({
+...row,
+amount: parseFloat(row.amount)
+}))
 });
-
-// =======================
+} catch (err) {
+next(err);
+}
+});
+// ===============
 // (Called by Karten.jsx)
-// =======================
-router.get('/cards/settings', async (req, res, next) => {
-  try {
-    const userId = await getActiveUserId();
-    const result = await pool.query('SELECT contactless, online_payments, foreign_payments FROM security_profiles WHERE user_id = $1 LIMIT 1', [userId]);
-    
-    const settingsRow = result.rows.length ? result.rows[0] : { contactless: true, online_payments: true, foreign_payments: true };
-    
-    return res.status(200).json({
-      success: true,
-      settings: {
-        contactless: settingsRow.contactless,
-        onlinePayments: settingsRow.online_payments,
-        foreignPayments: settingsRow.foreign_payments
-      }
-    });
-  } catch (err) {
-    next(err);
-  }
+// ===============
+router.get('/cards/data', async (req, res, next) => {
+try {
+const userId = await getActiveUserId();
+
+// 1. Fetch user cards
+const cardsResult = await pool.query(
+`SELECT
+card_type,
+card_name,
+masked_number,
+expiry_date,
+status,
+daily_limit::float AS daily_limit,
+credit_limit::float AS credit_limit,
+used_amount::float AS used_amount,
+mobile_pay_active
+FROM user_cards
+WHERE user_id = $1`,
+[userId]
+);
+
+//  Fetch security settings
+const settingsResult = await pool.query(
+`SELECT contactless, online_payments, foreign_payments
+FROM security_profiles
+WHERE user_id = $1 LIMIT 1`,
+[userId]
+);
+
+const settingsRow = settingsResult.rows.length
+? settingsResult.rows[0]
+: { contactless: true, online_payments: true, foreign_payments: false };
+
+return res.status(200).json({
+success: true,
+cards: cardsResult.rows,
+settings: {
+contactless: settingsRow.contactless,
+onlinePayments: settingsRow.online_payments,
+foreignPayments: settingsRow.foreign_payments
+}
 });
-
-router.post('/cards/settings', async (req, res, next) => {
-  try {
-    const { field, value } = req.body;
-    const userId = await getActiveUserId();
-
-    const columnMapping = {
-      contactless: 'contactless',
-      onlinePayments: 'online_payments',
-      foreignPayments: 'foreign_payments'
-    };
-
-    const targetColumn = columnMapping[field];
-    if (!targetColumn) {
-      return res.status(400).json({ success: false, message: 'Ungültiges Einstellungsfeld.' });
-    }
-
-    const sql = `UPDATE security_profiles SET ${targetColumn} = $1 WHERE user_id = $2`;
-    await pool.query(sql, [Boolean(value), userId]);
-
-    return res.status(200).json({ success: true, message: 'Einstellung erfolgreich gespeichert.' });
-  } catch (err) {
-    next(err);
-  }
+} catch (err) {
+next(err);
+}
 });
-
-// ========================
-// (Called by Depot.jsx)
-// ========================
+// ====================
+// UNION DEPOT ENDPOINT
+// ====================
 router.get('/depot', async (req, res, next) => {
-  try {
-    const userId = await getActiveUserId();
+try {
+const userId = await getActiveUserId();
 
-    const balanceResult = await pool.query('SELECT depot_value, depot_cost_basis FROM balances WHERE user_id = $1 LIMIT 1', [userId]);
-    const positionsResult = await pool.query('SELECT name, isin, shares, value, performance, icon, sparplan_info AS "sparplanInfo" FROM depot_positions WHERE user_id = $1', [userId]);
-    
-    const balanceRow = balanceResult.rows.length ? balanceResult.rows[0] : { depot_value: 0, depot_cost_basis: 0 };
-    
-    return res.status(200).json({
-      success: true,
-      depotValue: parseFloat(balanceRow.depot_value),
-      costBasis: parseFloat(balanceRow.depot_cost_basis),
-      positions: positionsResult.rows.map(row => ({
-        ...row,
-        shares: parseFloat(row.shares),
-        value: parseFloat(row.value),
-        performance: parseFloat(row.performance)
-      }))
-    });
-  } catch (err) {
-    next(err);
-  }
+// 1. Fetch user to generate a dynamic Depot Number
+const userResult = await pool.query('SELECT kundennummer FROM users WHERE id = $1', [userId]);
+const kundennummer = userResult.rows.length ? userResult.rows[0].kundennummer : '000000';
+
+// 2. Fetch balances
+const balanceResult = await pool.query('SELECT depot_value, depot_cost_basis FROM balances WHERE user_id = $1 LIMIT 1', [userId]);
+const balanceRow = balanceResult.rows.length ? balanceResult.rows[0] : { depot_value: 0, depot_cost_basis: 0 };
+
+// 3. Fetch active positions
+const positionsResult = await pool.query('SELECT name, isin, shares, value, performance, icon, sparplan_info AS "sparplanInfo" FROM depot_positions WHERE user_id = $1', [userId]);
+
+return res.status(200).json({
+success: true,
+account: {
+depotNumber: `DEP-${kundennummer}`,
+custodyType: 'Inlandsverwahrung'
+},
+depotValue: parseFloat(balanceRow.depot_value),
+costBasis: parseFloat(balanceRow.depot_cost_basis),
+positions: positionsResult.rows.map(row => ({
+...row,
+shares: parseFloat(row.shares),
+value: parseFloat(row.value),
+performance: parseFloat(row.performance)
+}))
+});
+} catch (err) {
+next(err);
+}
 });
 
 // =======================
@@ -412,7 +437,7 @@ router.get('/dauerauftraege', async (req, res, next) => {
   }
 });
 // =============================
-// (Called by Postfach.jsx on component mount)
+// (Called by Postfach.jsx)
 // =============================
 router.get('/user/messages', async (req, res, next) => {
 try {
