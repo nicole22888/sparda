@@ -63,14 +63,13 @@ function Karten({ user }) {
     }
   };
 
-  // ─── ⚡ STRICT DATABASE BINDINGS ───
+  // ─── STRICT DATABASE BINDINGS ───
   const firstName = user?.first_name || '';
   const lastName = user?.last_name || '';
   const fullName = `${firstName} ${lastName}`.trim().toUpperCase();
 
-  // Dynamically extract card objects from the database array
-  const giro = cards.find(c => c.card_type === 'girocard') || {};
-  const master = cards.find(c => c.card_type === 'mastercard') || {};
+  const giro = cards.find(c => c.card_type?.toLowerCase() === 'girocard') || {};
+    const master = cards.find(c => c.card_type?.toLowerCase() === 'mastercard') || {};
 
   // Helper to dynamically format currency
   const formatCurrency = (amount) => {
@@ -208,47 +207,46 @@ function Karten({ user }) {
             <div className="card-title" style={{ marginBottom: '14px' }}>
               Karten-Einstellungen
             </div>
+{/* Toggle 1: Kontaktlose Zahlung */}
+<div className="security-item" style={{ opacity: updatingField === 'contactless' ? 0.6 : 1 }}>
+<div>
+<div className="security-name">Kontaktlose Zahlung (Girocard)</div>
+<div className="security-desc">NFC-Zahlungen bis 50 € ohne PIN</div>
+</div>
+<div
+className={`toggle ${contactless ? 'on' : ''} ${updatingField === 'contactless' ? 'disabled' : ''}`}
+onClick={() => updatingField !== 'contactless' && handleSettingToggle('contactless', contactless, setContactless)}
+></div>
+</div>
 
-            {/* Toggle 1: Kontaktlose Zahlung */}
-            <div className="security-item" style={{ opacity: updatingField === 'contactless' ? 0.6 : 1 }}>
-              <div>
-                <div className="security-name">Kontaktlose Zahlung (Girocard)</div>
-                <div className="security-desc">NFC-Zahlungen bis 50 € ohne PIN</div>
-              </div>
-              <div
-                className={`toggle ${contactless ? 'on' : ''} ${updatingField === 'contactless' ? 'disabled' : ''}`}
-                onClick={() => updatingField !== 'contactless' && handleSettingToggle('contactless', contactless, setContactless)}
-              ></div>
-            </div>
+{/* Toggle 2: Online-Zahlungen */}
+<div className="security-item" style={{ opacity: updatingField === 'online_payments' ? 0.6 : 1 }}>
+<div>
+<div className="security-name">Online-Zahlungen (Mastercard)</div>
+<div className="security-desc">3D Secure aktiviert</div>
+</div>
+<div
+className={`toggle ${onlinePayments ? 'on' : ''} ${updatingField === 'online_payments' ? 'disabled' : ''}`}
+onClick={() => updatingField !== 'online_payments' && handleSettingToggle('online_payments', onlinePayments, setOnlinePayments)}
+></div>
+</div>
 
-            {/* Toggle 2: Online-Zahlungen */}
-            <div className="security-item" style={{ opacity: updatingField === 'onlinePayments' ? 0.6 : 1 }}>
-              <div>
-                <div className="security-name">Online-Zahlungen (Mastercard)</div>
-                <div className="security-desc">3D Secure aktiviert</div>
-              </div>
-              <div
-                className={`toggle ${onlinePayments ? 'on' : ''} ${updatingField === 'onlinePayments' ? 'disabled' : ''}`}
-                onClick={() => updatingField !== 'onlinePayments' && handleSettingToggle('onlinePayments', onlinePayments, setOnlinePayments)}
-              ></div>
-            </div>
-
-            {/* Toggle 3: Auslandszahlungen */}
-            <div className="security-item" style={{ opacity: updatingField === 'foreignPayments' ? 0.6 : 1 }}>
-              <div>
-                <div className="security-name">Auslandszahlungen</div>
-                <div className="security-desc">Zahlungen außerhalb EU/EWR</div>
-              </div>
-              <div
-                className={`toggle ${foreignPayments ? 'on' : ''} ${updatingField === 'foreignPayments' ? 'disabled' : ''}`}
-                onClick={() => updatingField !== 'foreignPayments' && handleSettingToggle('foreignPayments', foreignPayments, setForeignPayments)}
-              ></div>
-            </div>
-          </div>
-        </>
-      )}
-    </section>
-  );
+{/* Toggle 3: Auslandszahlungen */}
+<div className="security-item" style={{ opacity: updatingField === 'foreign_payments' ? 0.6 : 1 }}>
+<div>
+<div className="security-name">Auslandszahlungen</div>
+<div className="security-desc">Zahlungen außerhalb EU/EWR</div>
+</div>
+<div
+className={`toggle ${foreignPayments ? 'on' : ''} ${updatingField === 'foreign_payments' ? 'disabled' : ''}`}
+onClick={() => updatingField !== 'foreign_payments' && handleSettingToggle('foreign_payments', foreignPayments, setForeignPayments)}
+></div>
+</div>
+</div>
+</>
+)}
+</section>
+);
 }
 
 export default Karten;
