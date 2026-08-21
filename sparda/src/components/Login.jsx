@@ -129,7 +129,7 @@ const Login = ({ onLogin }) => {
                 <input
                   type="text"
                   id="login-user"
-                  placeholder="z.B. Sparda1234512.05.85"
+                  placeholder="USERNAME"
                   value={netKey}
                   onChange={(e) => setNetKey(e.target.value)}
                   disabled={isLoading}

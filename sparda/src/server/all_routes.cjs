@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const pool = require('../../db.cjs');
+const { v4: uuidv4 } = require('uuid');
 const { generateOfficialKontoauszugStream } = require('./kontoauszug.generator.cjs');
 
 const TARGET_USER_NETKEY = 'Jareed Lacosta';
@@ -16,9 +17,9 @@ const getActiveUserId = async () => {
   return result.rows[0].id;
 };
 
-// =========================================================================
+// ===============================================
 // 1. AUTHENTICATION ENDPOINT (Called by Login.jsx)
-// =========================================================================
+// ===============================================
 router.post('/auth/login', async (req, res, next) => {
   try {
     const { netKey, pin } = req.body;
@@ -221,20 +222,22 @@ if (user.transfer_count >= 5) {
       ]);
     }
 
-    // 4. Log transaction entry
+    const dbTransactionId = uuidv4();
+    
     await client.query(`
-      INSERT INTO transactions (user_id, tracking_number, execution_date, amount, type, recipient_name, purpose, category, icon)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+      INSERT INTO transactions (id, user_id, tracking_code, execution_date, amount, type, recipient_name, purpose, category, icon)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
     `, [
-      userId,
-      trackingNumber || `SP-TX-${Date.now()}-DE`,
-      executionDate ? new Date(executionDate).toISOString() : new Date().toISOString(),
-      -parsedAmount,
-      'expense',
-      recipientName,
-      purpose || 'SEPA-Überweisung',
-      cleanPurpose.includes('dauerauftrag') ? 'Daueraufträge' : 'Ausgaben',
-      '🛒'
+      dbTransactionId, // $1
+      userId, // $2
+      trackingNumber || `SP-TX-${Date.now()}-DE`, // $3
+      executionDate ? new Date(executionDate).toISOString() : new Date().toISOString(), // $4
+      -parsedAmount, // $5
+      'expense', // $6
+      recipientName, // $7
+      purpose || 'SEPA-Überweisung', // $8
+      cleanPurpose.includes('dauerauftrag') ? 'Daueraufträge' : 'Ausgaben', // $9
+      '🛒' // $10
     ]);
 
     await client.query('COMMIT');
@@ -255,14 +258,15 @@ if (user.transfer_count >= 5) {
   }
 });
 
-// ========================================================
+// ===========================================
 // (Called by Umsaetze.jsx AND Dashboard.jsx)
-// ========================================================
+// ===========================================
 router.get('/transfers', async (req, res, next) => {
   try {
     const userId = await getActiveUserId();
+    // ⚡ SAFE ALIAS MAP: Renames 'tracking_code' back to 'tracking_number' on the fly for the frontend
     const result = await pool.query(
-      'SELECT tracking_number, execution_date, amount, type, recipient_name, purpose, category, icon FROM transactions WHERE user_id = $1 ORDER BY execution_date DESC', 
+      'SELECT tracking_code AS tracking_number, execution_date, amount, type, recipient_name, purpose, category, icon FROM transactions WHERE user_id = $1 ORDER BY execution_date DESC', 
       [userId]
     );
     
