@@ -16,47 +16,76 @@ const getActiveUserId = async () => {
   if (result.rows.length === 0) throw new Error('User registry entry missing inside database.');
   return result.rows[0].id; // Returns UUID string
 };
-
 // =========================================================================
 // 1. AUTHENTICATION ENDPOINT (Called by Login.jsx)
 // =========================================================================
 router.post('/auth/login', async (req, res, next) => {
-  try {
-    const { netKey, pin } = req.body;
+try {
+const { netKey, pin } = req.body;
 
-    if (!netKey || !pin) {
-      return res.status(400).json({ success: false, message: 'NetKey und PIN sind erforderlich.' });
-    }
+if (!netKey || !pin) {
+return res.status(400).json({ success: false, message: 'NetKey und PIN sind erforderlich.' });
+}
 
-    const result = await pool.query(
-      'SELECT id, pin_hash, first_name, last_name, kundennummer FROM users WHERE netkey ILIKE $1 LIMIT 1', 
-      [netKey.trim()]
-    );
+// ─── ⚡ UPDATED: JOIN USERS AND SECURITY_PROFILES ───
+const result = await pool.query(
+`SELECT 
+u.*, 
+sp.secure_go, 
+sp.smart_tan, 
+sp.email_notifications, 
+sp.push_notifications,
+sp.device_model,
+sp.device_activation_date
+FROM users u
+LEFT JOIN security_profiles sp ON u.id = sp.user_id
+WHERE u.netkey ILIKE $1 LIMIT 1`, 
+[netKey.trim()]
+);
 
-    if (result.rows.length === 0) {
-      return res.status(401).json({ success: false, message: 'Anmeldedaten sind ungültig (Falscher NetKey oder PIN).' });
-    }
+if (result.rows.length === 0) {
+return res.status(401).json({ success: false, message: 'Anmeldedaten sind ungültig (Falscher NetKey oder PIN).' });
+}
 
-    const userRow = result.rows[0]; 
+const userRow = result.rows[0]; 
 
-    const match = await bcrypt.compare(pin, userRow.pin_hash);
-    if (!match) {
-      return res.status(401).json({ success: false, message: 'Anmeldedaten sind ungültig (Falscher NetKey oder PIN).' });
-    }
+const match = await bcrypt.compare(pin, userRow.pin_hash);
+if (!match) {
+return res.status(401).json({ success: false, message: 'Anmeldedaten sind ungültig (Falscher NetKey oder PIN).' });
+}
 
-    return res.status(200).json({
-      success: true,
-      message: 'Erfolgreich angemeldet.',
-      user: {
-        id: userRow.id,
-        name: `${userRow.first_name || ''} ${userRow.last_name || ''}`.trim(),
-        accountType: 'SpardaGiro Klassik',
-        kundennummer: userRow.kundennummer || '123456'
-      }
-    });
-  } catch (err) {
-    next(err);
-  }
+// ─── ⚡ UPDATED: SEND ALL PROFILE AND SECURITY FIELDS TO FRONTEND ───
+return res.status(200).json({
+success: true,
+message: 'Erfolgreich angemeldet.',
+user: {
+id: userRow.id,
+name: `${userRow.first_name || ''} ${userRow.last_name || ''}`.trim(),
+accountType: 'SpardaGiro Klassik',
+
+// Personal Data
+kundennummer: userRow.kundennummer || '-',
+first_name: userRow.first_name || '-',
+last_name: userRow.last_name || '-',
+geburtsdatum: userRow.geburtsdatum,
+steuer_id: userRow.steuer_id || '-',
+adresse: userRow.adresse || '-',
+telefon: userRow.telefon || '-',
+email: userRow.email || '-',
+mitglied_seit: userRow.mitglied_seit || '-',
+
+// Security Profile Data
+secure_go: userRow.secure_go ?? true,
+smart_tan: userRow.smart_tan ?? false,
+email_notifications: userRow.email_notifications ?? true,
+push_notifications: userRow.push_notifications ?? false,
+device_model: userRow.device_model || 'Registriertes Smartphone',
+device_activation_date: userRow.device_activation_date
+}
+});
+} catch (err) {
+next(err);
+}
 });
 
 // =========================================================================
