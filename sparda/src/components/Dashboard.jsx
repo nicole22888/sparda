@@ -79,19 +79,27 @@ function Dashboard({ goTo, user, accounts = [] }) {
         const calculatedGiro = txList.length > 0 
           ? baseGiro + txList.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0)
           : baseGiro;
+setDashboardData({
+  giroBalance: calculatedGiro,
 
-        setDashboardData({
-          giroBalance: calculatedGiro,
-          sparBalance: sparData.success ? parseFloat(sparData.balance) : (parseFloat(sparAccount.balance) || 0),
-          depotValue: depotData.success ? parseFloat(depotData.depotValue) : (parseFloat(depotAccount.balance) || 0),
-          recentTransactions: txList,
-          incomeMonth: income,
-          expenseMonth: expense,
-          standingOrdersCount: ordersData.orders ? ordersData.orders.length : 0,
-          nextStandingOrderDate: ordersData.nextExecutionDate || null,
-          categorySpending: spending,
-          messages: messagesData.messages || []
-        });
+  // FIX: Sparkonto balance is inside sparData.account.balance
+  sparBalance: sparData.success && sparData.account
+  ? parseFloat(sparData.account.balance) || 0
+  : parseFloat(sparAccount.balance) || 0,
+
+  // FIX: Depot value comes from depotData.depotValue
+  depotValue: depotData.success
+  ? parseFloat(depotData.depotValue) || 0
+  : parseFloat(depotAccount.balance) || 0,
+
+  recentTransactions: txList,
+  incomeMonth: income,
+  expenseMonth: expense,
+  standingOrdersCount: ordersData.orders ? ordersData.orders.length : 0,
+  nextStandingOrderDate: ordersData.nextExecutionDate || null,
+  categorySpending: spending,
+  messages: messagesData.messages || []
+  });
       } catch (err) {
         console.error("Dashboard aggregation failure:", err);
       } finally {
