@@ -93,26 +93,31 @@ router.post('/auth/login', async (req, res, next) => {
 // ========================================================
 router.get('/balances', async (req, res, next) => {
   try {
-    const userId = await getActiveUserId();
-    const result = await pool.query(
-      'SELECT giro_balance, spar_balance, depot_value, depot_cost_basis FROM balances WHERE user_id = $1 LIMIT 1', 
-      [userId]
-    );
+  const userId = await getActiveUserId();
+  const result = await pool.query(
+  'SELECT giro_balance, spar_balance, depot_value, depot_cost_basis FROM balances WHERE user_id = $1 LIMIT 1',
+  [userId]
+  );
 
-    const balanceRow = result.rows.length ? result.rows[0] : { giro_balance: 0, spar_balance: 0, depot_value: 0, depot_cost_basis: 0 };
+  const balanceRow = result.rows.length ? result.rows[0] : { giro_balance: 0, spar_balance: 0, depot_value: 0, depot_cost_basis: 0 };
 
-    return res.status(200).json({
-      success: true,
-      giroBalance: parseFloat(balanceRow.giro_balance),
-      sparBalance: parseFloat(balanceRow.spar_balance),
-      depotValue: parseFloat(balanceRow.depot_value),
-      depotCostBasis: parseFloat(balanceRow.depot_cost_basis)
-    });
+  const giro = parseFloat(balanceRow.giro_balance) || 0;
+  const spar = parseFloat(balanceRow.spar_balance) || 0;
+  const depot = parseFloat(balanceRow.depot_value) || 0;
+  const totalWealth = giro + spar + depot;
+
+  return res.status(200).json({
+  success: true,
+  giroBalance: giro,
+  sparBalance: spar,
+  depotValue: depot,
+  depotCostBasis: parseFloat(balanceRow.depot_cost_basis) || 0,
+  gesamtGuthaben: totalWealth
+  });
   } catch (err) {
-    next(err);
+  next(err);
   }
-});
-
+  });
 // =========================
 // (Called by Header.jsx)
 // =========================
