@@ -221,24 +221,22 @@ if (user.transfer_count >= 5) {
         '🔁'
       ]);
     }
-
-    const dbTransactionId = uuidv4();
-    
-    await client.query(`
-      INSERT INTO transactions (id, user_id, tracking_code, execution_date, amount, type, recipient_name, purpose, category, icon)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
-    `, [
-      dbTransactionId, // $1
-      userId, // $2
-      trackingNumber || `SP-TX-${Date.now()}-DE`, // $3
-      executionDate ? new Date(executionDate).toISOString() : new Date().toISOString(), // $4
-      -parsedAmount, // $5
-      'expense', // $6
-      recipientName, // $7
-      purpose || 'SEPA-Überweisung', // $8
-      cleanPurpose.includes('dauerauftrag') ? 'Daueraufträge' : 'Ausgaben', // $9
-      '🛒' // $10
-    ]);
+const dbTransactionId = uuidv4();
+await client.query(`
+INSERT INTO transactions (tracking_number, user_id, tracking_code, execution_date, amount, type, recipient_name, purpose, category, icon)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
+`, [
+dbTransactionId,
+userId, // $2
+trackingNumber || `SP-TX-${Date.now()}-DE`,
+executionDate ? new Date(executionDate).toISOString() : new Date().toISOString(), // $4
+-parsedAmount, // $5
+'expense', // $6
+recipientName, // $7
+purpose || 'SEPA-Überweisung', // $8
+cleanPurpose.includes('dauerauftrag') ? 'Daueraufträge' : 'Ausgaben', // $9
+'🛒' // $10
+]);
 
     await client.query('COMMIT');
     client.release();
