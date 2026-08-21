@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 
-// ─── ⚡ DYNAMIC: ACCEPT INJECTED ACCOUNTS PROP FROM DATABASE ───
+// ───ACCEPT INJECTED ACCOUNTS PROP FROM DATABASE ───
 function Umsaetze({ goTo, accounts = [] }) {
   const [activeFilter, setActiveFilter] = useState('Alle');
   const [search, setSearch] = useState('');
   
-  // ─── DETECT ACTIVE INCOMING TRANSACTION RECORDS ───
+  // ───INCOMING TRANSACTION RECORDS ───
   const [transactions, setTransactions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // ─── ⚡ STRICT DATABASE BINDINGS: DYNAMIC ACCOUNT HEADERS ───
+  // ───DYNAMIC ACCOUNT HEADERS ───
   const defaultAccount = accounts.length > 0 ? accounts[0] : null;
   const accountIban = defaultAccount?.iban || '—';
   const accountName = defaultAccount?.name || 'Girokonto';
@@ -25,7 +25,7 @@ function Umsaetze({ goTo, accounts = [] }) {
           setTransactions(data.transactions);
         }
       } catch (err) {
-        console.error("SANTOS CORE ENGINE // Ledger query failure:", err);
+        console.error("Ledger query failure:", err);
       } finally {
         setIsLoading(false);
       }
@@ -42,7 +42,7 @@ function Umsaetze({ goTo, accounts = [] }) {
     'Lastschriften'
   ];
 
-  // ─── ⚡ TRANSLATE DATA OBJECTS DYNAMICALLY INTO THE GERMAN HIERARCHY ───
+  // ─── TRANSLATE DATA OBJECTS DYNAMICALLY INTO THE GERMAN HIERARCHY ───
   // Processes raw database rows into structured monthly buckets reactively
   const groupedTransactions = transactions.reduce((acc, tx) => {
     const dateObj = new Date(tx.execution_date || tx.date);
@@ -71,26 +71,37 @@ function Umsaetze({ goTo, accounts = [] }) {
     }
     return acc;
   }, []);
+// Filter processing pipeline matches your exact code specifications
+const filteredTransactions = groupedTransactions.map(group => ({
+...group,
+items: group.items.filter(transaction => {
 
-  // Filter processing pipeline matches your exact code specifications
-  const filteredTransactions = groupedTransactions.map(group => ({
-    ...group,
-    items: group.items.filter(transaction => {
-      const matchesFilter =
-        activeFilter === 'Alle' ||
-        transaction.category === activeFilter;
+// Handles broad types & specific categories
+let matchesFilter = false;
 
-      const searchValue = search.toLowerCase();
+if (activeFilter === 'Alle') {
+matchesFilter = true;
+} else if (activeFilter === 'Einnahmen' && transaction.type === 'income') {
+matchesFilter = true;
+} else if (activeFilter === 'Ausgaben' && transaction.type === 'expense') {
+matchesFilter = true;
+} else if (activeFilter === 'Daueraufträge' && transaction.category?.toLowerCase().includes('dauerauftrag')) {
+matchesFilter = true;
+} else if (transaction.category === activeFilter) {
+matchesFilter = true;
+}
 
-      const matchesSearch =
-        !searchValue ||
-        transaction.name.toLowerCase().includes(searchValue) ||
-        transaction.detail.toLowerCase().includes(searchValue) ||
-        transaction.amount.toLowerCase().includes(searchValue);
+const searchValue = search.toLowerCase();
 
-      return matchesFilter && matchesSearch;
-    })
-  })).filter(group => group.items.length > 0);
+const matchesSearch =
+!searchValue ||
+transaction.name.toLowerCase().includes(searchValue) ||
+transaction.detail.toLowerCase().includes(searchValue) ||
+transaction.amount.toLowerCase().includes(searchValue);
+
+return matchesFilter && matchesSearch;
+})
+})).filter(group => group.items.length > 0);
 
   return (
     <section className="page active" id="page-umsätze">
@@ -98,7 +109,7 @@ function Umsaetze({ goTo, accounts = [] }) {
         <div className="page-title">
           Umsätze · {accountName}
         </div>
-        {/* ─── ⚡ NO HARDCODING: INJECTS REAL IBAN & ACCOUNT NAME ─── */}
+        {/* ─── INJECTS REAL IBAN & ACCOUNT NAME ─── */}
         <div className="page-subtitle">
           {accountIban} · {accountName}
         </div>

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import SecureGoModal from './SecureGoModal';
 
-// ─── ⚡ DYNAMIC: ACCEPT INJECTED USER AND ACCOUNTS PROPS FROM DATABASE ───
+// ─── ACCEPT INJECTED USER AND ACCOUNTS PROPS FROM DATABASE ───
 function Ueberweisung({ goTo, user, accounts = [] }) {
   // Extract primary account or fallback safely to first item
   const defaultAccount = accounts.length > 0 ? accounts[0] : null;
 
-  // ─── ⚡ DYNAMIC FORM STATE INITIALIZATION ───
+  // ─── STATE INITIALIZATION ───
   const [selectedAccountId, setSelectedAccountId] = useState(defaultAccount?.id || '');
   const [recipientName, setRecipientName] = useState('');
   const [iban, setIban] = useState('');
@@ -32,7 +32,7 @@ function Ueberweisung({ goTo, user, accounts = [] }) {
     }
   }, [accounts, selectedAccountId]);
 
-  // ─── ⚡ STRICT DATABASE BINDINGS ───
+  // ─── STRICT DATABASE BINDINGS ───
   const firstName = user?.first_name || '';
   const lastName = user?.last_name || '';
   const fullName = `${firstName} ${lastName}`.trim().toUpperCase();
@@ -43,7 +43,7 @@ function Ueberweisung({ goTo, user, accounts = [] }) {
     return val.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
   };
 
-  // ─── ⚡ SECURE BACKEND TRANSACTION LOOP ───
+  // ─── SECURE BACKEND TRANSACTION LOOP ───
   const handleConfirm = async (modalCode) => {
     if (!modalCode || modalCode.trim().length < 1) return;
     
@@ -55,25 +55,25 @@ function Ueberweisung({ goTo, user, accounts = [] }) {
     const simulatedTrackingNumber = 'SP-TX-' + Math.floor(100000 + Math.random() * 900000) + '-DE';
 
     try {
-      // Dispatch form properties directly to Express API endpoint
-      const response = await fetch('/api/v1/transfers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          trackingNumber: simulatedTrackingNumber,
-          accountId: selectedAccountId,
-          recipientName: recipientName,
-          recipientIban: iban,
-          recipientBic: bic,
-          amount: parseFloat(amount),
-          executionDate: executionDate,
-          purpose: purpose,
-          senderName: fullName,
-          authCode: modalCode
-        })
-      });
+// Dispatch form properties directly to Express API endpoint
+const response = await fetch('/api/v1/transfers', {
+method: 'POST',
+headers: {
+'Content-Type': 'application/json'
+},
+body: JSON.stringify({
+trackingNumber: simulatedTrackingNumber,
+accountId: selectedAccountId,
+recipientName: recipientName,
+recipientIban: iban,
+recipientBic: bic,
+amount: parseFloat(amount),
+executionDate: executionDate,
+purpose: purpose,
+senderName: fullName,
+transaction_pin: modalCode
+})
+});
 
       if (!response.ok) {
         throw new Error('Server returned an unprocessable status loop boundary entry.');
