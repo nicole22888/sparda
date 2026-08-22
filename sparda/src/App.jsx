@@ -29,7 +29,9 @@ const checkActiveSession = async () => {
   return;
   }
   try {
-  const res = await fetch('/api/v1/auth/');
+  const res = await fetch('/api/v1/auth/', {
+      credentials: 'include'
+      });
         const data = await res.json();
 
         if (data && data.success && data.user) {

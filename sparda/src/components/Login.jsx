@@ -25,6 +25,7 @@ const Login = ({ onLogin }) => {
     try {
       const response = await fetch('/api/v1/auth/login', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -41,7 +42,7 @@ const Login = ({ onLogin }) => {
       }
 
       if (data.success && onLogin) {
-        // ─── ⚡ UPDATED: DELEGATE SESSION TRUTH TO BACKEND ───
+        // ─── DELEGATE SESSION TRUTH TO BACKEND ───
         // Pass both user and accounts up to App.jsx. No localStorage needed.
         setTimeout(() => {
           onLogin(data.user, data.accounts || []);
@@ -149,7 +150,7 @@ const Login = ({ onLogin }) => {
                 />
               </div>
 
-              {/* ⚡ UPDATED: Removed !netKey and !pin from the disabled array so users can click and trigger the shake */}
+              {/* Removed !netKey and !pin from the disabled array so users can click and trigger the shake */}
               <button 
                 type="submit" 
                 className="btn-login" 
