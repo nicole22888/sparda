@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const session = require('express-session');
 require('dotenv').config();
 
 const app = express();
@@ -9,6 +10,7 @@ const app = express();
 // =================================
 app.use(cors({
   origin: process.env.FRONTEND_URL || '*',
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -16,6 +18,20 @@ app.use(cors({
 // Global Request Payload Parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// =================================
+// SESSION / AUTHENTICATION MIDDLEWARE
+// =================================
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'sparda-session-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: false,
+    sameSite: 'lax'
+  }
+}));
 
 // Basic Request Logging Interceptor
 app.use((req, res, next) => {

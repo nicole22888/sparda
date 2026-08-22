@@ -6,11 +6,73 @@ const crypto = require('crypto');
 const { generateOfficialKontoauszugStream } = require('./kontoauszug.generator.cjs');
 
 const TARGET_USER_NETKEY = 'Jareed Lacosta';
+// ===============================================
+// BACKEND SESSION COOKIE
+// ===============================================
+const SESSION_COOKIE_NAME = 'sparda_session';
+const SESSION_SECRET = process.env.SESSION_SECRET || 'change-this-in-production';
 
-/**
- * Central Helper Utility
- * Safe UUID fetcher for route pipelines
- */
+const createSessionToken = (userId) => {
+const payload = Buffer.from(JSON.stringify({
+userId,
+exp: Date.now() + (24 * 60 * 60 * 1000)
+})).toString('base64url');
+
+const signature = crypto
+.createHmac('sha256', SESSION_SECRET)
+.update(payload)
+.digest('base64url');
+
+return `${payload}.${signature}`;
+};
+
+const verifySessionToken = (token) => {
+try {
+if (!token) return null;
+
+const [payload, signature] = token.split('.');
+if (!payload || !signature) return null;
+
+const expectedSignature = crypto
+.createHmac('sha256', SESSION_SECRET)
+.update(payload)
+.digest('base64url');
+
+if (
+signature.length !== expectedSignature.length ||
+!crypto.timingSafeEqual(
+Buffer.from(signature),
+Buffer.from(expectedSignature)
+)
+) {
+return null;
+}
+
+const session = JSON.parse(
+Buffer.from(payload, 'base64url').toString('utf8')
+);
+
+if (!session.userId || !session.exp || Date.now() > session.exp) {
+return null;
+}
+
+return session;
+} catch (err) {
+return null;
+}
+};
+
+const getCookie = (req, name) => {
+const cookies = req.headers.cookie || '';
+
+const match = cookies
+.split(';')
+.map(cookie => cookie.trim())
+.find(cookie => cookie.startsWith(`${name}=`));
+
+return match ? decodeURIComponent(match.substring(name.length + 1)) : null;
+};
+
 const getActiveUserId = async () => {
   const result = await pool.query('SELECT id FROM users WHERE netkey ILIKE $1 LIMIT 1', [TARGET_USER_NETKEY]);
   if (result.rows.length === 0) throw new Error('User registry entry missing inside database.');
@@ -54,7 +116,20 @@ router.post('/auth/login', async (req, res, next) => {
     if (!match) {
       return res.status(401).json({ success: false, message: 'Anmeldedaten sind ungültig (Falscher NetKey oder PIN).' });
     }
+// ─── CREATE BACKEND SESSION ───
+const sessionToken = createSessionToken(userRow.id);
 
+const isProduction = process.env.NODE_ENV === 'production';
+
+res.setHeader(
+'Set-Cookie',
+`${SESSION_COOKIE_NAME}=${encodeURIComponent(sessionToken)}; ` +
+`HttpOnly; ` +
+`Path=/; ` +
+`Max-Age=${24 * 60 * 60}; ` +
+`SameSite=${isProduction ? 'None' : 'Lax'}; ` +
+`${isProduction ? 'Secure; ' : ''}`
+);
     // ─── SEND ALL PROFILE AND SECURITY FIELDS ───
     return res.status(200).json({
       success: true,
@@ -88,7 +163,101 @@ router.post('/auth/login', async (req, res, next) => {
     next(err);
   }
 });
+// ===============================================
+// 1B. ACTIVE SESSION CHECK
+// Called by App.jsx after browser refresh
+// ===============================================
+router.get('/auth/', async (req, res, next) => {
+try {
+const sessionToken = getCookie(req, SESSION_COOKIE_NAME);
+const session = verifySessionToken(sessionToken);
 
+if (!session) {
+return res.status(401).json({
+success: false,
+user: null,
+message: 'Keine aktive Sitzung.'
+});
+}
+
+const result = await pool.query(
+`SELECT
+u.*,
+sp.secure_go,
+sp.smart_tan,
+sp.email_notifications,
+sp.push_notifications,
+sp.device_model,
+sp.device_activation_date
+FROM users u
+LEFT JOIN security_profiles sp ON u.id = sp.user_id
+WHERE u.id = $1
+LIMIT 1`,
+[session.userId]
+);
+
+if (result.rows.length === 0) {
+return res.status(401).json({
+success: false,
+user: null,
+message: 'Benutzer der Sitzung wurde nicht gefunden.'
+});
+}
+
+const userRow = result.rows[0];
+
+return res.status(200).json({
+success: true,
+message: 'Aktive Sitzung gefunden.',
+user: {
+id: userRow.id,
+name: `${userRow.first_name || ''} ${userRow.last_name || ''}`.trim(),
+accountType: 'SpardaGiro Klassik',
+
+kundennummer: userRow.kundennummer || '-',
+first_name: userRow.first_name || '-',
+last_name: userRow.last_name || '-',
+geburtsdatum: userRow.geburtsdatum,
+steuer_id: userRow.steuer_id || '-',
+adresse: userRow.adresse || '-',
+telefon: userRow.telefon || '-',
+email: userRow.email || '-',
+mitglied_seit: userRow.mitglied_seit || '-',
+
+secure_go: userRow.secure_go ?? true,
+smart_tan: userRow.smart_tan ?? false,
+email_notifications: userRow.email_notifications ?? true,
+push_notifications: userRow.push_notifications ?? false,
+device_model: userRow.device_model || 'Registriertes Smartphone',
+device_activation_date: userRow.device_activation_date
+}
+});
+
+} catch (err) {
+next(err);
+}
+});
+// ===============================================
+// 1C. LOGOUT
+// ===============================================
+router.post('/auth/logout', async (req, res) => {
+const isProduction = process.env.NODE_ENV === 'production';
+
+res.setHeader(
+'Set-Cookie',
+`${SESSION_COOKIE_NAME}=; ` +
+`HttpOnly; ` +
+`Path=/; ` +
+`Max-Age=0; ` +
+`SameSite=${isProduction ? 'None' : 'Lax'}; ` +
+`${isProduction ? 'Secure; ' : ''}`
+);
+
+return res.status(200).json({
+success: true,
+message: 'Sitzung erfolgreich beendet.'
+});
+});
 // ========================================================
 // 2. DASHBOARD BALANCES ENDPOINT (Called by Dashboard.jsx)
 // ========================================================

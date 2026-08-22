@@ -24,10 +24,6 @@ function App() {
 
   useEffect(() => {
 const checkActiveSession = async () => {
-  if (!localStorage.getItem('isAuthenticated')) {
-  setIsAuthenticating(false);
-  return;
-  }
   try {
   const res = await fetch('/api/v1/auth/', {
       credentials: 'include'
@@ -64,7 +60,6 @@ const fetchUnreadCount = async () => {
 
   const handleLoginSuccess = (authenticatedUser, userAccounts = []) => {
     setUser(authenticatedUser);
-    localStorage.setItem('isAuthenticated', 'true');
     if (userAccounts.length > 0) {
       setAccounts(userAccounts);
     }
@@ -76,7 +71,7 @@ const fetchUnreadCount = async () => {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/v1/auth/logout', { method: 'POST' });
+      await fetch('/api/v1/auth/logout', { method: 'POST',credentials: 'include' });
     } catch (err) {
       console.error("Logout request error:", err);
     } finally {
