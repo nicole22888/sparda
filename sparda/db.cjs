@@ -5,7 +5,7 @@ require('dotenv').config();
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
-  console.error("❌ CRITICAL INITIALIZATION ERROR // Missing DATABASE_URL environment variable.");
+  console.error(" Missing DATABASE_URL environment variable.");
   process.exit(1);
 }
 
@@ -17,19 +17,15 @@ const pool = new Pool({
   connectionTimeoutMillis: 5000,
   ssl: { rejectUnauthorized: false } 
 });
-/**
- *  * Robust database initialization engine.
-  * Connects to Supabase and verifies schemas exist without forcing seed data.
-   */
+
    const initializeDatabaseEngine = async (retries = 5, delay = 3000) => {
    while (retries) {
    let client = null;
    try {
-   console.log(`🇩🇪 SPARDA CORE ENGINE // Connecting to Supabase pool... (Attempts left: ${retries})`);
+   console.log(`🇩🇪 Connecting to Supabase pool... (Attempts left: ${retries})`);
    client = await pool.connect();
-   console.log("🇩🇪 SPARDA CORE ENGINE // Handshake verified. Cloud network socket active.");
+   console.log("🇩🇪 Handshake verified. network active.");
 
-   // Verify tables exist using the correct UUID architecture mapping live Supabase
    await client.query(`
    CREATE TABLE IF NOT EXISTS users (
    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -88,7 +84,7 @@ const pool = new Pool({
    );
    `);
 
-   console.log("🇩🇪 SPARDA CORE ENGINE // Base schema architecture verified. Live data preserved.");
+   console.log("🇩🇪 Base schema architecture verified. Live data preserved.");
    client.release();
    return;
 
@@ -97,7 +93,7 @@ const pool = new Pool({
    retries -= 1;
 
    if (!retries) {
-   console.error("❌ CRITICAL ARCHITECTURAL SHUTDOWN // Supabase connection stream exhausted. Stopping node execution.");
+   console.error("❌ Supabase connection stream exhausted. Stopping node execution.");
    process.exit(1);
    }
 
@@ -109,4 +105,3 @@ const pool = new Pool({
 initializeDatabaseEngine();
 
 module.exports = pool;
-

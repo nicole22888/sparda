@@ -237,7 +237,23 @@ purpose || 'SEPA-Überweisung', // $8
 cleanPurpose.includes('dauerauftrag') ? 'Daueraufträge' : 'Ausgaben', // $9
 '🛒' // $10
 ]);
+// 5. Generate official Postfach document message
+const messageSubject = `📄 Umsatzbeleg Einzelbuchung (${trackingNumber || `SP-TX-${Date.now()}-DE`})`;
+const messagePreview = `Bestätigung Ihrer soeben ausgeführten SEPA-Überweisung an ${recipientName}.`;
 
+await client.query(`
+INSERT INTO messages (user_id, subject, preview, body, sender, is_unread, date, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
+`, [
+userId, // $1
+messageSubject, // $2
+messagePreview, // $3
+'Dieser Beleg wurde maschinell erstellt und wird elektronisch bereitgestellt.', // $4 (body fallback)
+'Sparda-Bank', // $5
+true, // $6 (is_unread)
+new Date().toISOString(), // $7 (date)
+new Date().toISOString() // $8 (created_at)
+]);
     await client.query('COMMIT');
     client.release();
 
