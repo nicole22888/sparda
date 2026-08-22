@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Header = ({ user, goTo, onLogout, unreadCount }) => {
+const Header = ({ user, goTo, onLogout, unreadCount, toggleMobileMenu }) => {
 
   const fullName = user?.name || user?.full_name || `${user?.first_name || ''} ${user?.last_name || ''}`.trim();
   
@@ -27,6 +27,11 @@ const Header = ({ user, goTo, onLogout, unreadCount }) => {
 
   return (
     <header className="app-header">
+      {/*Hamburger Menu Button */}
+      <button className="mobile-menu-btn" onClick={toggleMobileMenu}>
+        ☰
+      </button>
+
       <div className="app-header-logo">
         <div className="logo-icon">
           <svg viewBox="0 0 100 100">

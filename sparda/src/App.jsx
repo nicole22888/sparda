@@ -23,9 +23,13 @@ function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const checkActiveSession = async () => {
-      try {
-        const res = await fetch('/api/v1/auth/');
+const checkActiveSession = async () => {
+  if (!localStorage.getItem('isAuthenticated')) {
+  setIsAuthenticating(false);
+  return;
+  }
+  try {
+  const res = await fetch('/api/v1/auth/');
         const data = await res.json();
 
         if (data && data.success && data.user) {
@@ -36,7 +40,7 @@ function App() {
           fetchUnreadCount();
         }
       } catch (err) {
-        console.error("SANTOS CORE ENGINE // Session verification error:", err);
+        console.error(" Session verification error:", err);
       } finally {
         setIsAuthenticating(false);
       }
@@ -58,6 +62,7 @@ const fetchUnreadCount = async () => {
 
   const handleLoginSuccess = (authenticatedUser, userAccounts = []) => {
     setUser(authenticatedUser);
+    localStorage.setItem('isAuthenticated', 'true');
     if (userAccounts.length > 0) {
       setAccounts(userAccounts);
     }
@@ -73,6 +78,7 @@ const fetchUnreadCount = async () => {
     } catch (err) {
       console.error("Logout request error:", err);
     } finally {
+      localStorage.removeItem('isAuthenticated');
       setUser(null);
       setAccounts([]);
       setUnreadMailCount(0);
