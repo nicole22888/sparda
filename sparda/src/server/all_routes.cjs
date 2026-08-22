@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const pool = require('../../db.cjs');
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const { generateOfficialKontoauszugStream } = require('./kontoauszug.generator.cjs');
 
 const TARGET_USER_NETKEY = 'Jareed Lacosta';
@@ -221,7 +221,7 @@ if (user.transfer_count >= 5) {
         '🔁'
       ]);
     }
-const dbTransactionId = uuidv4();
+const dbTransactionId = crypto.randomUUID();
 await client.query(`
 INSERT INTO transactions (tracking_number, user_id, tracking_code, execution_date, amount, type, recipient_name, purpose, category, icon)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
